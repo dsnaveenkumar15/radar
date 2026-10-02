@@ -12,7 +12,7 @@
 <div class="notice"><strong>Partial digest.</strong> Some official sources could not be checked{% if d.sources.failed %}: <span class="mono">{{ d.sources.failed | join(", ") }}</span>{% endif %}. Items from them may be missing.</div>
 {% endif %}
 {% if d.synthesis != "complete" %}
-<div class="notice"><strong>{{ "Unsynthesized." if d.synthesis == "unsynthesized" else "Partly unsynthesized." }}</strong> Claude was unavailable for {{ "every" if d.synthesis == "unsynthesized" else "some" }} cluster. Impact labels and facts are computed from API diffs and advisories; written summaries are missing.</div>
+<div class="notice"><strong>{{ "Unsynthesized." if d.synthesis == "unsynthesized" else "Partly unsynthesized." }}</strong> The model was unavailable for {{ "every" if d.synthesis == "unsynthesized" else "some" }} cluster. Impact labels and facts are computed from API diffs and advisories; written summaries are missing.</div>
 {% endif %}
 <section id="stack" class="stack" data-tags="{{ tags | join(' ') }}" hidden>
   <h2>My stack</h2>
