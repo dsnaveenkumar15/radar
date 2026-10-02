@@ -6,7 +6,7 @@
 {% set minor = d.clusters | rejectattr("impact", "in", ["breaking", "notable"]) | list %}
 <figure class="window" aria-label="Latest digest summary">
   <figcaption class="window-head"><span>Latest digest, {{ d.date }}</span><span class="chip">{{ d.sources.checked }} of {{ d.sources.total }} sources</span></figcaption>
-  <p class="window-summary">{{ d.clusters | length }} updates: <strong>{{ breaking | length }} breaking</strong>, {{ notable | length }} notable, {{ minor | length }} minor.</p>
+  <p class="window-summary">{{ d.clusters | length }} updates: {% if breaking %}<strong>{{ breaking | length }} breaking</strong>{% else %}none breaking{% endif %}, {{ notable | length }} notable, {{ minor | length }} minor.</p>
   <ul class="window-list">
     {% for c in (breaking + notable + minor)[:5] %}<li><a href="#{{ c.id }}">{{ c.title }}</a><span class="status status-{{ 'bad' if c.impact == 'breaking' else ('warn' if c.impact == 'notable' else 'quiet') }}">{{ c.impact | capitalize }}</span></li>{% endfor %}
   </ul>
