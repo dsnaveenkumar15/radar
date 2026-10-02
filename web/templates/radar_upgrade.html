@@ -5,7 +5,7 @@
 <p>Paste a <span class="mono">requirements.txt</span>, <span class="mono">package.json</span>, <span class="mono">package-lock.json</span>, <span class="mono">poetry.lock</span> or <span class="mono">uv.lock</span>, <span class="mono">Pipfile.lock</span> or <span class="mono">yarn.lock</span> (v1). <span class="mono">pnpm-lock.yaml</span> is not supported yet. Radar lists the breaking changes, deprecations, migrations and security advisories between your versions and the latest. The file is read in your browser and never leaves your browser; no model is involved.</p>
 <form id="upgrade-form">
   <label>Dependency file<textarea id="deps" rows="12" spellcheck="false" maxlength="6000000"></textarea></label>
-  <p><label>or choose a file <input type="file" id="deps-file"></label> <button>Check my stack</button></p>
+  <p><label>Or choose a file <input type="file" id="deps-file"></label> <button>Check my stack</button></p>
 </form>
 <section id="upgrade-result" aria-live="polite"></section>
 <p class="muted">Radar compares the API of each tracked package between the releases it has watched, so coverage grows as new releases land. Packages Radar does not track are listed as such, never as safe.</p>
