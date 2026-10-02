@@ -1,0 +1,25 @@
+<h2>Radar</h2>
+<p class="mono">latest digest: {% if radar_latest %}{{ radar_latest.date }} · {{ radar_latest.status }} · {{ radar_latest.synthesis }}{% else %}none yet{% endif %}</p>
+<table>
+  <tr><th>failing source</th><th>tier</th><th>failures</th><th>last error</th></tr>
+  {% for h in radar_failing %}
+  <tr class="mono"><td>{{ h.source }}</td><td>{{ h.tier }}</td><td>{{ h.consecutive_failures }}</td><td>{{ h.last_error or "" }}{% if h.drift %} (schema drift){% endif %}</td></tr>
+  {% else %}<tr><td colspan="4">all sources healthy</td></tr>{% endfor %}
+</table>
+
+<h2>Mark a cluster as updated</h2>
+<form method="post" action="/admin/supersessions">
+  <input type="text" name="date" placeholder="2026-10-02" required> <input type="text" name="cluster" placeholder="c3" required>
+  <input type="text" name="text" maxlength="500" placeholder="what changed since (yanked, fixed in ...)" required>
+  <input type="text" name="url" placeholder="https:// link (optional)">
+  <button>mark updated</button>
+</form>
+
+{% if manual_updates %}
+<table>
+  {% for s in manual_updates %}<tr class="mono"><td>{{ s.date }} {{ s.cluster }}</td><td>{{ s.text }}</td>
+    <td><form method="post" action="/admin/supersessions/{{ s.ref.partition(':')[2] }}/delete"><button>delete</button></form></td></tr>{% endfor %}
+</table>
+<p class="muted">A deleted banner disappears from the site at the next radar.aux run (every 6 hours).</p>
+{% endif %}
+

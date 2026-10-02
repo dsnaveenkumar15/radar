@@ -1,0 +1,15 @@
+{% extends "radar_base.html" %}
+{% block title %}Archive · {{ meta.name }}{% endblock %}
+{% block content %}
+<h1>Archive</h1>
+{% if rows %}
+<table>
+  <tr><th>date</th><th>status</th><th>summaries</th><th>clusters</th><th>breaking</th></tr>
+  {% for r in rows %}
+  <tr><td class="mono"><a href="/digests/{{ r.date }}">{{ r.date }}</a></td><td>{{ r.status }}</td><td>{{ r.synthesis }}</td><td class="mono">{{ r.clusters }}</td><td class="mono">{{ r.breaking }}</td></tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="muted">No digests yet.</p>
+{% endif %}
+{% endblock %}

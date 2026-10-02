@@ -1,0 +1,92 @@
+[[entity]]
+id = "langgraph"
+name = "LangGraph"
+kind = "framework"
+aliases = ["lang graph"]
+stack = true
+
+[[entity]]
+id = "langchain"
+name = "LangChain"
+kind = "framework"
+aliases = ["lang chain", "langchain-core"]
+stack = true
+
+[[entity]]
+id = "llamaindex"
+name = "LlamaIndex"
+kind = "framework"
+aliases = ["llama index", "llama_index", "llama-index-core"]
+stack = true
+
+[[entity]]
+id = "crewai"
+name = "CrewAI"
+kind = "framework"
+aliases = ["crew ai"]
+stack = true
+
+[[entity]]
+id = "autogen"
+name = "AutoGen"
+kind = "framework"
+aliases = ["auto gen", "autogen-agentchat"]
+stack = true
+
+[[entity]]
+id = "mcp"
+name = "Model Context Protocol"
+kind = "protocol"
+aliases = ["MCP", "modelcontextprotocol"]
+stack = true
+
+[[entity]]
+id = "vllm"
+name = "vLLM"
+kind = "runtime"
+stack = true
+
+[[entity]]
+id = "ollama"
+name = "Ollama"
+kind = "runtime"
+stack = true
+
+[[entity]]
+id = "anthropic"
+name = "Anthropic API"
+kind = "provider"
+aliases = ["Anthropic", "Claude API", "Claude"]
+stack = true
+
+[[entity]]
+id = "openai"
+name = "OpenAI API"
+kind = "provider"
+aliases = ["OpenAI", "GPT"]
+stack = true
+
+[[entity]]
+id = "google-genai"
+name = "Google Gemini API"
+kind = "provider"
+aliases = ["Gemini", "google genai", "Google GenAI"]
+stack = true
+
+[[entity]]
+id = "rag"
+name = "Retrieval-augmented generation"
+kind = "concept"
+aliases = ["RAG"]
+
+[[entity]]
+id = "evals"
+name = "LLM evaluation"
+kind = "concept"
+aliases = ["evals", "LLM evals"]
+
+[[entity]]
+id = "guardrails"
+name = "Guardrails"
+kind = "concept"
+aliases = ["safety filters"]

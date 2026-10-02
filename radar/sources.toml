@@ -1,0 +1,149 @@
+# Tracked sources. tier = official | community. Provider changelog feeds (type = "feed", url = "https://...")
+# are supported but none ship here: spec section 12 says to verify each URL before relying on it.
+
+[[source]]
+id = "gh-langgraph"
+type = "github_releases"
+tier = "official"
+repo = "langchain-ai/langgraph"
+package = "pypi:langgraph"
+module = "langgraph"
+api = true
+starter = true
+
+[[source]]
+id = "gh-langchain"
+type = "github_releases"
+tier = "official"
+repo = "langchain-ai/langchain"
+package = "pypi:langchain"
+module = "langchain"
+api = true
+
+[[source]]
+id = "gh-llamaindex"
+type = "github_releases"
+tier = "official"
+repo = "run-llama/llama_index"
+package = "pypi:llama-index-core"
+module = "llama_index.core"
+api = true
+
+[[source]]
+id = "gh-crewai"
+type = "github_releases"
+tier = "official"
+repo = "crewAIInc/crewAI"
+package = "pypi:crewai"
+module = "crewai"
+api = true
+
+[[source]]
+id = "gh-autogen"
+type = "github_releases"
+tier = "official"
+repo = "microsoft/autogen"
+package = "pypi:autogen-agentchat"
+module = "autogen_agentchat"
+api = true
+tag_prefix = "python-v"
+
+[[source]]
+id = "gh-mcp-python"
+type = "github_releases"
+tier = "official"
+repo = "modelcontextprotocol/python-sdk"
+package = "pypi:mcp"
+module = "mcp"
+api = true
+
+[[source]]
+id = "gh-mcp-typescript"
+type = "github_releases"
+tier = "official"
+repo = "modelcontextprotocol/typescript-sdk"
+package = "npm:@modelcontextprotocol/sdk"
+api = true
+
+[[source]]
+id = "gh-vllm"
+type = "github_releases"
+tier = "official"
+repo = "vllm-project/vllm"
+package = "pypi:vllm"
+
+[[source]]
+id = "gh-ollama"
+type = "github_releases"
+tier = "official"
+repo = "ollama/ollama"
+
+[[source]]
+id = "gh-ollama-python"
+type = "github_releases"
+tier = "official"
+repo = "ollama/ollama-python"
+package = "pypi:ollama"
+module = "ollama"
+api = true
+
+[[source]]
+id = "gh-anthropic-python"
+type = "github_releases"
+tier = "official"
+repo = "anthropics/anthropic-sdk-python"
+package = "pypi:anthropic"
+module = "anthropic"
+api = true
+
+[[source]]
+id = "gh-anthropic-typescript"
+type = "github_releases"
+tier = "official"
+repo = "anthropics/anthropic-sdk-typescript"
+package = "npm:@anthropic-ai/sdk"
+api = true
+
+[[source]]
+id = "gh-openai-python"
+type = "github_releases"
+tier = "official"
+repo = "openai/openai-python"
+package = "pypi:openai"
+module = "openai"
+api = true
+
+[[source]]
+id = "gh-openai-node"
+type = "github_releases"
+tier = "official"
+repo = "openai/openai-node"
+package = "npm:openai"
+api = true
+
+[[source]]
+id = "gh-google-genai"
+type = "github_releases"
+tier = "official"
+repo = "googleapis/python-genai"
+package = "pypi:google-genai"
+module = "google.genai"
+api = true
+
+[[source]]
+id = "arxiv-ai"
+type = "arxiv"
+tier = "community"
+categories = ["cs.AI", "cs.CL", "cs.MA"]
+
+[[source]]
+id = "hn"
+type = "hn"
+tier = "community"
+queries = ["LLM agent", "MCP server", "RAG", "Claude", "agentic", "LangGraph"]
+min_points = 50
+
+[[source]]
+id = "mcp-registry"
+type = "mcp_registry"
+tier = "official"

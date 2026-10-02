@@ -1,0 +1,27 @@
+{% extends "radar_base.html" %}
+{% block title %}Trends · {{ meta.name }}{% endblock %}
+{% block content %}
+<h1>Trends{% if w %} · {{ w.week }}{% endif %}</h1>
+{% if not w %}
+<p class="muted">No weekly trends yet.</p>
+{% else %}
+{% set t = w.stats.totals %}
+<p class="muted mono">{{ t.digests or 0 }} digest(s), {{ t.clusters or 0 }} cluster(s), {{ t.breaking or 0 }} breaking, against {{ t.last_clusters or 0 }} clusters the week before. Counts are computed from the published digests.</p>
+<table>
+  <tr><th>entity</th><th>this week</th><th>last week</th><th>breaking</th></tr>
+  {% for e in w.stats.entities %}<tr><td>{{ e.name }}</td><td class="mono">{{ e.this }}</td><td class="mono">{{ e.last }}</td><td class="mono">{{ e.breaking }}</td></tr>{% else %}<tr><td colspan="4" class="muted">no entities counted</td></tr>{% endfor %}
+</table>
+{% if w.commentary %}
+<h2>Commentary</h2>
+<p class="muted">Written by a model from the counts above; code removed anything the counts do not support.</p>
+<p>{{ w.commentary.summary }}</p>
+{% if w.commentary.rising %}<h3>Rising</h3><ul>{% for m in w.commentary.rising %}<li><strong>{{ m.entity }}</strong> {{ m.why }}</li>{% endfor %}</ul>{% endif %}
+{% if w.commentary.falling %}<h3>Falling</h3><ul>{% for m in w.commentary.falling %}<li><strong>{{ m.entity }}</strong> {{ m.why }}</li>{% endfor %}</ul>{% endif %}
+{% if w.commentary.patterns %}<h3>Patterns</h3>
+{% for p in w.commentary.patterns %}<p><strong>{{ p.name }}</strong> {{ p.why }}<br>{% for cid in p.clusters %}{% set date, _, cluster = cid.partition("/") %}<a class="mono" href="/c/{{ date }}/{{ cluster }}">{{ cid }}</a> {% endfor %}</p>{% endfor %}{% endif %}
+{% else %}
+<p class="muted">No commentary this week: the counts above stand on their own.</p>
+{% endif %}
+{% endif %}
+{% if weeks %}<h2>Other weeks</h2><p>{% for k in weeks %}<a class="mono" href="/trends/{{ k.week }}">{{ k.week }}</a> {% endfor %}</p>{% endif %}
+{% endblock %}

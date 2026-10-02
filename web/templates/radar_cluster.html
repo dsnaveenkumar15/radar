@@ -1,0 +1,63 @@
+{% extends "radar_base.html" %}
+{% block title %}{{ c.title }} · {{ meta.name }}{% endblock %}
+{% block content %}
+<p><a href="/digests/{{ d.date }}">&larr; digest {{ d.date }}</a></p>
+<h1>{{ c.title }}</h1>
+<p>
+  <span class="badge">{{ c.impact }}</span>
+  <span class="badge mono">signal {{ c.signal.score }}</span>
+  {% if c.synthesis %}{% for t in c.synthesis.affects %}<span class="badge">{{ t }}</span>{% endfor %}{% endif %}
+</p>
+{% for e in errata %}
+<div class="notice"><strong>Correction ({{ e.created_at | date }}).</strong> {{ e.text }}</div>
+{% endfor %}
+{% for u in updates %}
+<div class="notice"><strong>Updated.</strong> {{ u.text }}{% set link = (u.url or "")|safe_url %}{% if link %} <a href="{{ link }}" rel="nofollow noopener">more</a>{% endif %}</div>
+{% endfor %}
+{% if c.synthesis %}
+<p>{{ c.synthesis.what_changed }}</p>
+<p><strong>Action:</strong> {{ c.synthesis.action }}</p>
+{% if c.synthesis.migration_effort %}<p class="muted">Migration effort: {{ c.synthesis.migration_effort }}</p>{% endif %}
+{% if c.synthesis.entities %}<p class="muted">Entities: {{ c.synthesis.entities | join(", ") }}</p>{% endif %}
+{% if c.synthesis.quote %}
+<h2>From the release notes</h2>
+<pre><code>{{ c.synthesis.quote.quote }}</code></pre>
+{% endif %}
+{% if c.synthesis.migration %}
+<h2>Migration ({{ c.synthesis.migration.language }})</h2>
+<p class="muted">Before</p><pre><code>{{ c.synthesis.migration.before }}</code></pre>
+<p class="muted">After</p><pre><code>{{ c.synthesis.migration.after }}</code></pre>
+{% endif %}
+{% else %}
+<p class="muted">Unsynthesized: no written summary for this cluster. The facts and sources below are computed, not generated.</p>
+{% endif %}
+{% if c.facts.api_breaking or c.facts.api_deprecations or c.facts.advisories %}
+<h2>Facts</h2>
+{% for b in c.facts.api_breaking %}
+<table>
+  <tr><th colspan="2" class="mono">{{ b.package }} {{ b.from }} → {{ b.to }}: breaking API changes</th></tr>
+  {% for dd in b.details %}<tr><td class="mono">{{ dd.symbol }}</td><td>{{ dd.detail }}</td></tr>{% else %}{% for s in b.symbols %}<tr><td class="mono">{{ s }}</td><td></td></tr>{% endfor %}{% endfor %}
+</table>
+{% endfor %}
+{% for b in c.facts.api_deprecations %}<p class="mono">Deprecated in {{ b.package }} {{ b.to }}: {{ b.symbols | join(", ") }}</p>{% endfor %}
+{% for a in c.facts.advisories %}<p class="mono"><a href="https://osv.dev/vulnerability/{{ a.id }}" rel="nofollow noopener">{{ a.id }}</a> · {{ a.severity }} · {{ a.package }}</p>{% endfor %}
+{% endif %}
+<h2>Cited</h2>
+{% for i in cited %}{% set href = i.url | safe_url %}
+<p>{% if href %}<a href="{{ href }}" rel="nofollow noopener">{{ i.title }}</a>{% else %}{{ i.title }}{% endif %} <span class="muted mono">{{ i.source }} · {{ i.tier }} · {{ i.published | date }}</span></p>
+{% else %}<p class="muted">No cited items.</p>{% endfor %}
+{% if others %}
+<h2>Other items</h2>
+{% for i in others %}{% set href = i.url | safe_url %}
+<p>{% if href %}<a href="{{ href }}" rel="nofollow noopener">{{ i.title }}</a>{% else %}{{ i.title }}{% endif %} <span class="muted mono">{{ i.source }} · {{ i.tier }} · {{ i.published | date }}</span></p>
+{% endfor %}
+{% endif %}
+<h2>Report an error</h2>
+{% if reported %}<p class="notice">Thanks. The report is in the review queue.</p>{% endif %}
+<form method="post" action="/api/report">
+  <input type="hidden" name="date" value="{{ d.date }}">
+  <input type="hidden" name="cluster" value="{{ c.id }}">
+  <textarea name="message" maxlength="1000" aria-label="What is wrong?" placeholder="What is wrong, and what is the evidence?" required></textarea>
+  <p><button type="submit">report</button></p>
+</form>
+{% endblock %}

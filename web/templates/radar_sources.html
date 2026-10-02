@@ -1,0 +1,30 @@
+{% extends "radar_base.html" %}
+{% block title %}Sources · {{ meta.name }}{% endblock %}
+{% block content %}
+<h1>Sources and method</h1>
+{% if not health and not m %}<p class="muted">No source data yet.</p>{% endif %}
+{% if health %}
+<h2>Source health</h2>
+<table>
+  <tr><th>source</th><th>tier</th><th>kind</th><th>ok</th><th>last ok</th><th>failures</th><th>last error</th></tr>
+  {% for h in health %}
+  <tr class="mono"><td>{{ h.source }}</td><td>{{ h.tier }}</td><td>{{ h.kind }}</td><td>{{ "yes" if h.ok else "no" }}{% if h.drift %} (schema drift){% endif %}</td>
+    <td>{{ h.last_ok | datetime }}</td><td>{{ h.consecutive_failures }}</td><td>{{ h.last_error or "" }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% if m %}
+<h2>Signal score</h2>
+{% if m.signal %}
+<p>Version <span class="mono">{{ m.signal.version }}</span>. Public formula, computed by code:</p>
+<table>
+  <tr><th>part</th><th>weight</th><th>how</th></tr>
+  {% for k, w in m.signal.weights.items() %}<tr><td class="mono">{{ k }}</td><td class="mono">{{ w }}</td><td>{{ m.signal[k] }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+<h2>What is checked before anything is published</h2>
+<ul>{% for v in m.validators or [] %}<li>{{ v }}</li>{% endfor %}</ul>
+<p class="muted">{{ m.completeness }}</p>
+<p class="muted">Summaries: prompt <span class="mono">{{ m.prompt_version }}</span>. Stack tags: <span class="mono">{{ (m.stack_tags or []) | join(", ") }}</span>.</p>
+{% endif %}
+{% endblock %}
