@@ -1,7 +1,20 @@
 {% extends "radar_base.html" %}
 {% block title %}Digest {{ d.date }} · {{ meta.name }}{% endblock %}
+{% block hero_visual %}{% if latest %}
+{% set breaking = d.clusters | selectattr("impact", "equalto", "breaking") | list %}
+{% set notable = d.clusters | selectattr("impact", "equalto", "notable") | list %}
+{% set minor = d.clusters | rejectattr("impact", "in", ["breaking", "notable"]) | list %}
+<figure class="window" aria-label="Latest digest summary">
+  <figcaption class="window-head"><span>Latest digest, {{ d.date }}</span><span class="chip">{{ d.sources.checked }} of {{ d.sources.total }} sources</span></figcaption>
+  <p class="window-summary">{{ d.clusters | length }} updates: <strong>{{ breaking | length }} breaking</strong>, {{ notable | length }} notable, {{ minor | length }} minor.</p>
+  <ul class="window-list">
+    {% for c in (breaking + notable + minor)[:5] %}<li><a href="#{{ c.id }}">{{ c.title }}</a><span class="status status-{{ 'bad' if c.impact == 'breaking' else ('warn' if c.impact == 'notable' else 'quiet') }}">{{ c.impact | capitalize }}</span></li>{% endfor %}
+  </ul>
+  <p class="window-foot"><a href="/upgrade">Check these against your own versions</a></p>
+</figure>
+{% endif %}{% endblock %}
 {% block content %}
-<h1>{{ "Latest digest" if latest else "Digest" }} <span class="mono">{{ d.date }}</span></h1>
+{% if latest %}<h2 class="section-title">Latest digest, {{ d.date }}</h2>{% else %}<h1>Digest {{ d.date }}</h1>{% endif %}
 <p>
   <span class="badge">{{ d.status }}</span>
   <span class="badge">{{ d.synthesis }}</span>
