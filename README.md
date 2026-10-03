@@ -4,6 +4,11 @@ What changed in AI engineering, and whether it breaks your stack.
 
 A self-contained app of the naveenlabs AI galaxy (siblings: Trust, Blueprints). Clone it, install, run: nothing else is needed.
 Design: `docs/design.md` (one design for all three apps; this one implements §4 (core) and §6 (Radar)).
+Architecture, security, reliability and operations: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+Production at a glance: a hardened web container (non-root, read-only image, no Linux capabilities, CPU and memory
+limits) with a Docker health check on `/healthz` (which opens the database); HSTS, a strict CSP and a permissions
+policy on every response; exact dependency pins in `requirements.txt`.
 
 ## Local development (Windows)
 
@@ -89,8 +94,8 @@ $env:DB_PATH = "data\radar.db"; $env:DATA_ROOT = "data\radar-published"
 1. DNS A record `radar` pointing at the VPS IP; Traefik runs on the VPS.
 2. The naveenlabs-ai stack is running (it provides the `naveenlabs-ai_default` network and `ollama`); give its `ollama` service a memory limit (for example `mem_limit: 4g`) so it cannot crowd out other apps.
 3. `cp .env.example .env`, `cp batch.env.example batch.env`; set `ADMIN_PASSWORD` (16+ characters; `/admin` stays disabled while it is the default or short); on the laptop run `claude setup-token` and paste the token into `batch.env`.
-4. `docker compose up -d --build`; Traefik picks up the labels and issues the certificate.
-5. Uptime Kuma: an HTTP monitor on `/healthz`, plus a push monitor whose URL goes in `KUMA_PUSH_URL`.
+4. `docker compose up -d --build`; Traefik picks up the labels and issues the certificate. Wait for `docker inspect -f '{{.State.Health.Status}}' radar-web-1` to say `healthy`.
+5. Monitoring: probe `https://<host>/healthz` from outside the server (the `atlas` repository's `uptime` workflow does this every 30 minutes); optionally an Uptime Kuma push monitor whose URL goes in `KUMA_PUSH_URL`.
 
 
 ## The shared core
