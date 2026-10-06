@@ -206,7 +206,6 @@ def cluster_page(date: str, cluster_id: str, request: Request):
 
 RSS_DIGESTS = 14
 RSS_ITEMS = 50
-FEED_IMPACTS = ("breaking", "notable")
 _XML_ILLEGAL = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 
@@ -220,7 +219,7 @@ def _feed_base(request: Request) -> str:
 
 
 def feed_entries(request: Request) -> list[tuple[dict, dict]]:
-    """(digest, cluster) pairs the feed carries: breaking and notable updates from recent digests, newest first."""
+    """(digest, cluster) pairs the feed carries: every update from recent digests, newest first, at most RSS_ITEMS."""
     data = request.app.state.radar_data
     entries = []
     for row in data.index()["digests"][:RSS_DIGESTS]:
@@ -228,7 +227,7 @@ def feed_entries(request: Request) -> list[tuple[dict, dict]]:
         if digest is None:
             continue
         d = normalise(digest)
-        entries += [(d, c) for c in d["clusters"] if c["impact"] in FEED_IMPACTS]
+        entries += [(d, c) for c in d["clusters"]]
     return entries[:RSS_ITEMS]
 
 

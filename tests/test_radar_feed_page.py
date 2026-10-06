@@ -10,15 +10,15 @@ def test_feed_page_explains_the_feed_and_lists_its_items(settings):
     assert r.status_code == 200 and "text/html" in r.headers["content-type"]
     assert 'id="feed-url"' in html and "radar.localhost/feed.xml" in html and 'data-copy="feed-url"' in html
     assert 'href="/c/2026-10-02/c1"' in html and 'href="/c/2026-10-02/c3"' in html and 'href="/c/2026-10-01/c5"' in html
-    assert "/c/2026-10-02/c2" not in html                                   # minor updates are not in the feed
+    assert 'href="/c/2026-10-02/c2"' in html and "status-quiet" in html          # minor updates are in the feed too
     assert html.index("/c/2026-10-02/c1") < html.index("/c/2026-10-01/c5")  # newest first, as in the XML
     assert '<script src="/static/radar-feed.js' in html
 
 
 def test_feed_page_without_items_says_so(settings):
-    publish_digests(settings.data_root, digest("2026-10-02", [cluster("c2", "minor")]))
+    publish_digests(settings.data_root, digest("2026-10-02", clusters=[]))
     html = client(settings).get("/feed").text
-    assert "No breaking or notable updates in the last" in html and 'id="feed-url"' in html
+    assert "No updates in the last" in html and 'id="feed-url"' in html
 
 
 def test_feed_page_escapes_titles(settings):

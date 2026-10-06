@@ -23,7 +23,7 @@ def test_sources_page_without_data_still_renders(settings):
     assert r.status_code == 200 and "No source data yet" in r.text
 
 
-def test_feed_has_one_item_per_breaking_or_notable_cluster_newest_first(settings):
+def test_feed_has_one_item_per_cluster_of_any_impact_newest_first(settings):
     publish_digests(settings.data_root,
                     digest("2026-10-01", [cluster("c5", "notable")]),
                     digest("2026-10-02", [cluster("c1", "breaking"), cluster("c2", "minor"), cluster("c3", "notable", synthesis=None)]))
@@ -31,10 +31,10 @@ def test_feed_has_one_item_per_breaking_or_notable_cluster_newest_first(settings
     assert r.status_code == 200 and r.headers["content-type"].startswith("application/rss+xml")
     items = ET.fromstring(r.text).findall("./channel/item")
     assert [i.find("link").text for i in items] == [
-        "http://radar.localhost/c/2026-10-02/c1", "http://radar.localhost/c/2026-10-02/c3",
-        "http://radar.localhost/c/2026-10-01/c5"]
+        "http://radar.localhost/c/2026-10-02/c1", "http://radar.localhost/c/2026-10-02/c2",
+        "http://radar.localhost/c/2026-10-02/c3", "http://radar.localhost/c/2026-10-01/c5"]
     assert items[0].find("title").text.startswith("[breaking]") and "adds a required parameter" in items[0].find("description").text
-    assert "Unsynthesized" in items[1].find("description").text
+    assert items[1].find("title").text.startswith("[minor]") and "Unsynthesized" in items[2].find("description").text
 
 
 def test_feed_escapes_hostile_text_and_strips_control_characters(settings):
