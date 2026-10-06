@@ -79,3 +79,20 @@ def test_total_failures_are_counted_so_callers_can_say_the_model_service_is_down
     with pytest.raises(RuntimeError):
         g.invoke(["hi"])
     assert g.failures == 1
+
+
+def test_public_models_are_used_first_only_for_public_repo_runs():
+    from radar.agent.config import models_for
+    cfg = load_config({"AGENT_ENABLED": "1", "OPENROUTER_API_KEY": "k", "AGENT_FAST_MODELS": "paid1,paid2",
+                       "AGENT_STRONG_MODELS": "strong1", "AGENT_PUBLIC_MODELS": "free1"})
+    assert models_for(cfg, "repo") == {"fast": ["free1", "paid1", "paid2"], "strong": ["strong1"]}
+    assert models_for(cfg, "paste") == {"fast": ["paid1", "paid2"], "strong": ["strong1"]}      # pasted files may be private
+    assert models_for(load_config({"AGENT_ENABLED": "1", "OPENROUTER_API_KEY": "k", "AGENT_FAST_MODELS": "a"}), "repo") == {"fast": ["a"], "strong": ["a"]}
+
+
+def test_only_public_models_may_use_providers_that_keep_data():
+    from radar.agent.gateway import chat_factory
+    cfg = load_config({"AGENT_ENABLED": "1", "OPENROUTER_API_KEY": "k", "AGENT_FAST_MODELS": "paid1", "AGENT_PUBLIC_MODELS": "free1"})
+    make = chat_factory(cfg)
+    assert make("free1").extra_body["provider"]["data_collection"] == "allow"
+    assert make("paid1").extra_body["provider"]["data_collection"] == "deny"

@@ -45,7 +45,8 @@ def chat_factory(config):
 
     def make(name: str):
         return ChatOpenAI(model=name, api_key=config.api_key, base_url=config.base_url, timeout=60, max_retries=0,
-                          temperature=0, extra_body={"provider": {"data_collection": "deny", "require_parameters": True},
+                          temperature=0, extra_body={"provider": {"data_collection": "allow" if name in config.public_models else "deny",
+                                                                  "require_parameters": True},
                                                      "usage": {"include": True}})
     return make
 

@@ -104,7 +104,7 @@ tracked AI libraries are upgraded. Spec: `docs/superpowers/specs/2026-10-06-rada
 - **Models:** OpenAI-compatible chat models on OpenRouter through `radar/agent/gateway.py` (backup model, cost from the
   provider response, budgets checked before every call). Settings (web `.env`; the batch worker does not need them):
   `AGENT_ENABLED=1`, `OPENROUTER_API_KEY`, `AGENT_FAST_MODELS` and `AGENT_STRONG_MODELS` (comma lists, primary first),
-  `AGENT_PRICES` (`model=in/out;...` USD per million tokens, used when the provider reports no cost), `AGENT_DAILY_USD`
+  `AGENT_PUBLIC_MODELS` (optional; free-tier models that may keep prompts: used first, and only, for public repository runs, never for pasted files), `AGENT_PRICES` (`model=in/out;...` USD per million tokens, used when the provider reports no cost), `AGENT_DAILY_USD`
   (default 1.0), and `GITHUB_TOKEN` (repo fetches; same read-only token as `batch.env`).
 - **Limits:** per run 8 candidates, 30 tool calls, about 60k tokens, 2 minutes, $0.05; per visitor 3 runs a day and one at
   a time; 2 runs at once with a queue of 3; **$1.00 a day** for the whole site. Admin has a kill switch and today's spend.

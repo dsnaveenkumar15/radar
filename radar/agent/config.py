@@ -25,6 +25,7 @@ class AgentConfig:
     base_url: str = "https://openrouter.ai/api/v1"
     fast_models: list[str] = field(default_factory=list)
     strong_models: list[str] = field(default_factory=list)
+    public_models: list[str] = field(default_factory=list)      # may keep prompts: only ever used for public repositories
     prices: dict = field(default_factory=dict)
     daily_usd: float = 1.0
     run_usd: float = 0.05
@@ -43,5 +44,13 @@ def load_config(env=os.environ) -> AgentConfig:
                        base_url=env.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
                        fast_models=_list(env.get("AGENT_FAST_MODELS", "")),
                        strong_models=_list(env.get("AGENT_STRONG_MODELS", "")),
+                       public_models=_list(env.get("AGENT_PUBLIC_MODELS", "")),
                        prices=_prices(env.get("AGENT_PRICES", "")),
                        daily_usd=float(env.get("AGENT_DAILY_USD", "1.0")))
+
+
+def models_for(cfg: AgentConfig, mode: str) -> dict[str, list[str]]:
+    """Model order per role. Models listed as public (free tiers may keep prompts) come first for a public repository
+    and are never used for a pasted file, which may be private."""
+    fast = (cfg.public_models if mode == "repo" else []) + cfg.fast_models
+    return {"fast": fast, "strong": cfg.strong_models or cfg.fast_models}
