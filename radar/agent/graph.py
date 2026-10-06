@@ -16,6 +16,8 @@ from radar.agent.report import build_report
 from radar.agent.tools import TOOLS, SubmitVerdict, Toolbox
 from radar.agent.verify import verify
 
+REPORT_SECONDS = 45          # always left for the final report
+
 INVESTIGATE_SYSTEM = (
     "You check whether a library upgrade breaks one usage in a codebase. Use the tools to read the code around the "
     "usage and Radar's recorded change. Then call SubmitVerdict: 'confirmed' only if this exact code will break or "
@@ -188,6 +190,7 @@ def build_graph(ctx: Context, checkpointer=None):
 
     def report(state):
         files = state["inputs"]["files"]
+        ctx.gateway.budget.reserve(REPORT_SECONDS)
         rep = build_report(state, ctx.gateway, files)
         paths = [upgrade_path.plan_upgrade(g, state.get("verified") or [], state.get("candidates") or [],
                                            (ctx.upgrade.get("packages") or {}).get(g["package"], {}))

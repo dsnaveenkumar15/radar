@@ -31,7 +31,7 @@ class AgentConfig:
     run_usd: float = 0.05
     run_tokens: int = 60_000
     run_tool_calls: int = 30
-    run_seconds: int = 120
+    run_seconds: int = 180
     max_candidates: int = 8
     per_ip_day: int = 3
     concurrent: int = 2

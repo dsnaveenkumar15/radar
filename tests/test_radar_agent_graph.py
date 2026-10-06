@@ -1,3 +1,4 @@
+import pytest
 # tests/test_radar_agent_graph.py
 import json
 import time
@@ -170,3 +171,37 @@ def test_model_service_failures_are_stated_in_the_result_notes():
     run_graph(c, "down")
     result = next(p for t, p in events if t == "result")
     assert any("model service" in n for n in result["notes"])
+
+
+def test_the_report_still_runs_after_the_time_budget_is_spent_investigating():
+    from radar.agent.gateway import Budget
+
+    from tests.radar_agent_fakes import ScriptedModel
+    c = ctx({"s": [], "f": []}, [])
+
+    class SlowInvestigator(ScriptedModel):
+        def invoke(self, messages):
+            c.gateway.budget.deadline = time.monotonic() - 1            # the investigation used up all the time
+            return super().invoke(messages)
+
+    fast = SlowInvestigator([ai(tool_calls=[call("SubmitVerdict", {"verdict": "confirmed", "explanation": "removed",
+                                                                  "evidence": [{"path": "app/main.py", "line": 2, "quote": "t = x.old()"}]})])])
+    strong = ScriptedModel([ai(tool_calls=[call("SubmitPlan", {"order": [{"id": "c1", "reason": "r"}]})]),
+                            ai(tool_calls=[call("ProposeChanges", {"summary": "Replace x.old.", "changes": [
+                                {"candidate_id": "c1", "path": "app/main.py", "start_line": 2, "end_line": 2, "replacement": "t = x.fine()"}]})])])
+    models = {"f": fast, "s": strong}
+    c.gateway.factory = lambda name: models[name]
+    state = run_graph(c, "late")
+    assert "+t = x.fine()" in state["report"]["patch"] and state["report"]["summary"] == "Replace x.old."
+
+
+def test_budget_reserve_extends_only_an_expired_deadline():
+    from radar.agent.gateway import Budget, BudgetExceeded
+    b = Budget(1.0, 1000, 10, time.monotonic() - 1)
+    with pytest.raises(BudgetExceeded):
+        b.check()
+    b.reserve(30)
+    b.check()
+    far = Budget(1.0, 1000, 10, time.monotonic() + 500)
+    far.reserve(30)
+    assert far.deadline > time.monotonic() + 400                       # an unspent deadline is never shortened

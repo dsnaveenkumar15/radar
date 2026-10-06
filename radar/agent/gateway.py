@@ -33,6 +33,10 @@ class Budget:
         if time.monotonic() >= self.deadline:
             raise BudgetExceeded("time budget reached")
 
+    def reserve(self, seconds: float) -> None:
+        """Time the final report is always allowed, even when investigating used the whole budget."""
+        self.deadline = max(self.deadline, time.monotonic() + seconds)
+
     def add(self, usd: float, tokens: int) -> None:
         self.usd += usd
         self.tokens += tokens

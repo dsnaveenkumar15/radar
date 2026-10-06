@@ -106,7 +106,7 @@ tracked AI libraries are upgraded. Spec: `docs/superpowers/specs/2026-10-06-rada
   `AGENT_ENABLED=1`, `OPENROUTER_API_KEY`, `AGENT_FAST_MODELS` and `AGENT_STRONG_MODELS` (comma lists, primary first),
   `AGENT_PUBLIC_MODELS` (optional; free-tier models that may keep prompts: used first, and only, for public repository runs, never for pasted files), `AGENT_PRICES` (`model=in/out;...` USD per million tokens, used when the provider reports no cost), `AGENT_DAILY_USD`
   (default 1.0), and `GITHUB_TOKEN` (repo fetches; same read-only token as `batch.env`).
-- **Limits:** per run 8 candidates, 30 tool calls, about 60k tokens, 2 minutes, $0.05; per visitor 3 runs a day and one at
+- **Limits:** per run 8 candidates, 30 tool calls, about 60k tokens, 3 minutes (plus 45 s always kept for the report), $0.05; per visitor 3 runs a day and one at
   a time; 2 runs at once with a queue of 3; **$1.00 a day** for the whole site. Admin has a kill switch and today's spend.
 - **Showcase replays:** run the agent on a demo repository, then mark the run:
   `UPDATE agent_runs SET showcase=1 WHERE id='...'` (in the app database). Replays cost nothing and never expire.
