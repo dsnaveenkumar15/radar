@@ -96,6 +96,7 @@
       path.security.forEach((a) => box.appendChild(el("p", "notice", `${a.severity} advisory ${a.id}: ${a.summary}`)));
       results.appendChild(box);
     });
+    if ((p.report.changes || []).length) results.appendChild(el("p", "muted", "Suggested changes: the findings above are verified against your code, but a model wrote these edits. Review before applying."));
     (p.report.changes || []).forEach((c) => results.appendChild(el("pre", "agent-diff", c.diff)));
     if (p.report.patch) {
       const a = el("a", "btn", "Download patch");

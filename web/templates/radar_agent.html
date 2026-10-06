@@ -22,5 +22,5 @@
 <h2 class="section-title">Recorded runs</h2>
 <ul class="agent-showcases">{% for s in showcases %}<li><a href="/agent/runs/{{ s.id }}">{{ s.input.repo_url or s.input.filename or s.id }}</a></li>{% endfor %}</ul>
 {% endif %}
-<script src="/static/radar-agent.js?v=1"></script>
+<script src="/static/radar-agent.js?v=2"></script>
 {% endblock %}
