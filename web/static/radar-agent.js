@@ -93,7 +93,10 @@
       box.appendChild(el("h3", null, `${path.package}: ${path.used} → ${path.latest} · ${path.difficulty} (about ${path.effort_hours} h)`));
       if (path.safe_now) box.appendChild(el("p", null, `Safe now: up to ${path.safe_now}.`));
       path.steps.forEach((s) => box.appendChild(el("p", null, `${s.to}: ${s.changes} change(s) in ${s.files} file(s).`)));
-      path.security.forEach((a) => box.appendChild(el("p", "notice", `${a.severity} advisory ${a.id}: ${a.summary}`)));
+      const rank = {critical: 0, high: 1, medium: 2, low: 3};
+      const advisories = path.security.slice().sort((a, b) => (rank[a.severity] ?? 4) - (rank[b.severity] ?? 4));
+      advisories.slice(0, 5).forEach((a) => box.appendChild(el("p", "notice", `${a.severity} advisory ${a.id}: ${a.summary}`)));
+      if (advisories.length > 5) box.appendChild(el("p", "muted", `and ${advisories.length - 5} more advisories affecting ${path.used}`));
       results.appendChild(box);
     });
     if ((p.report.changes || []).length) results.appendChild(el("p", "muted", "Suggested changes: the findings above are verified against your code, but a model wrote these edits. Review before applying."));

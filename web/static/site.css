@@ -310,3 +310,5 @@ ol, ul { padding-left: 22px; }
 .agent-diff { font-size: 12.5px; overflow-x: auto; }
 @media (max-width: 900px) { .agent-cols { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .map-node rect { transition: none; } }
+.trace-plan { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.trace-plan .chip { height: auto; min-height: 24px; padding: 4px 10px; white-space: normal; line-height: 1.35; border-radius: 12px; }
