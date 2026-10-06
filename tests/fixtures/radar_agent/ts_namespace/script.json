@@ -1,0 +1,6 @@
+{
+ "Gone@src/b.ts:2": {
+  "verdict": "confirmed",
+  "quote": "k.Gone();"
+ }
+}

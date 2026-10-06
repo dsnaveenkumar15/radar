@@ -1,0 +1,6 @@
+{
+ "x.Client.send_old@app.py:2": {
+  "verdict": "confirmed",
+  "quote": "c = Client()"
+ }
+}

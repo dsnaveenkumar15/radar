@@ -1,0 +1,6 @@
+{
+ "Old.make@src/a.ts:2": {
+  "verdict": "confirmed",
+  "quote": "const v = O.make();"
+ }
+}

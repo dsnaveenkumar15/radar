@@ -1,0 +1,19 @@
+{% extends "radar_base.html" %}
+{% block title %}Agent run · {{ meta.name }}{% endblock %}
+{% block radar_head %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<div id="agent-run" data-run="{{ run.id }}" data-status="{{ run.status }}">
+  <p class="muted">{{ run.input.repo_url or run.input.filename or "pasted file" }}</p>
+  <div class="agent-top" id="agent-top"><span data-k="time">0 s</span><span data-k="model"></span><span data-k="tokens">0 tokens</span><span data-k="cost">$0.0000</span></div>
+  <svg id="agent-map" class="agent-map" viewBox="0 0 900 90" role="img" aria-label="The agent's steps">
+    {% for n, x in [("fetch_inputs",10),("parse_deps",120),("ground",230),("index_code",340),("plan",450),("investigate",560),("verify",670),("report",780)] %}
+    <g class="map-node" data-node="{{ n }}"><rect x="{{ x }}" y="20" width="100" height="40" rx="8"/><text x="{{ x + 50 }}" y="45">{{ n.replace("_", " ") }}</text></g>
+    {% endfor %}
+  </svg>
+  <div class="agent-cols">
+    <section aria-label="Investigation"><h2>Investigation</h2><div id="agent-board" class="agent-board"></div><ol id="agent-trace" class="agent-trace"></ol></section>
+    <section aria-label="Results"><h2>Results</h2><div id="agent-results" aria-live="polite"></div></section>
+  </div>
+</div>
+<script src="/static/radar-agent.js?v=1"></script>
+{% endblock %}

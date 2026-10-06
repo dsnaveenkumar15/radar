@@ -28,7 +28,7 @@ def test_first_publish_writes_digest_index_and_sources(db, tmp_path):
     result = publish_digest(db, tmp_path, digest("2026-10-02", "breaking"), [{"source": "gh-x", "ok": True}], REGISTRY, NOW)
     assert result["published"] is True
     release = load_current(tmp_path, "radar", DATASET)
-    assert set(release.manifest["files"]) == {"digests/2026-10-02.json", "errata.json", "index.json", "packages.json", "sources.json", "supersessions.json", "surface.json", "upgrade.json"}
+    assert set(release.manifest["files"]) == {"api_changes.json", "digests/2026-10-02.json", "errata.json", "index.json", "packages.json", "sources.json", "supersessions.json", "surface.json", "upgrade.json"}
     index = json.loads(release.read("index.json"))
     assert index["digests"] == [{"date": "2026-10-02", "status": "full", "synthesis": "complete", "clusters": 1, "breaking": 1}]
     sources = json.loads(release.read("sources.json"))

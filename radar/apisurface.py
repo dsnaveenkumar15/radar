@@ -1,6 +1,7 @@
 """Keep API snapshots and version-to-version diffs of tracked packages current (no LLM)."""
 import json
 import logging
+from datetime import datetime
 
 from core.db import tx
 from core.events import emit
@@ -82,5 +83,61 @@ def refresh_api_surface(conn, fetcher, sources, now: float, max_downloads: int =
             report[source.package] = f"error: {exc}"
         else:
             store.record_source(conn, f"api:{source.package}", "official", "api", True, None, now)
+            report[source.package] = "ok"
+    return report
+
+
+BACKFILL_DOWNLOADS = 40
+
+
+def _published(info: dict) -> float | None:
+    raw = info.get("published")
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def backfill_versions(ecosystem: str, infos: list[dict], now: float, window_days: int = 730,
+                      max_versions: int = 15) -> list[str]:
+    """Latest stable patch of each minor release published inside the window, oldest first, newest `max_versions`."""
+    cutoff = now - window_days * 86400
+    recent = [i["version"] for i in infos if (_published(i) or 0) >= cutoff]
+    by_minor: dict[tuple, str] = {}
+    for version in sorted_stable(ecosystem, recent):
+        key = sort_key(ecosystem, version)
+        # pypi: packaging Version (has .release); npm: tuple (major, minor, patch, ...)
+        release = key.release if hasattr(key, "release") else key[:3]
+        by_minor[tuple(release[:2])] = version          # ascending order, so the last patch of a minor wins
+    return sorted(by_minor.values(), key=lambda v: sort_key(ecosystem, v))[-max_versions:]
+
+
+def backfill_api_surface(conn, fetcher, sources, now: float, max_downloads: int = BACKFILL_DOWNLOADS) -> dict:
+    """Snapshot older minor releases so the upgrade agent can ground any version from the last ~2 years. Stores
+    snapshots only: no diffs and no events (old history is grounding data, not news; api_changes.json diffs it)."""
+    budget, report = max_downloads, {}
+    for source in sources:
+        if not (source.api and source.package):
+            continue
+        ecosystem, _, name = source.package.partition(":")
+        try:
+            infos = fetcher.versions(ecosystem, name)
+            by_version = {i["version"]: i for i in infos}
+            for version in backfill_versions(ecosystem, infos, now):
+                if _load(conn, ecosystem, name, version) is not None:
+                    continue
+                if budget <= 0:
+                    break
+                budget -= 1
+                snap = _surface(fetcher, ecosystem, name, by_version[version], source.module)
+                conn.execute("INSERT OR REPLACE INTO radar_api_snapshots(ecosystem, package, version, symbols, "
+                             "created_at) VALUES (?, ?, ?, ?, ?)", (ecosystem, name, version, json.dumps(snap), now))
+        except Exception as exc:
+            if not isinstance(exc, (SourceError, ArchiveError, ValueError)):
+                log.exception("api backfill crashed for %s", source.package)
+            report[source.package] = f"error: {exc}"
+        else:
             report[source.package] = "ok"
     return report

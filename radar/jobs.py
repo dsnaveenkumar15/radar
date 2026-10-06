@@ -12,7 +12,7 @@ from core.scheduler import GuardedBackend, in_night_window
 from core.worker import JobType
 from radar import digest, store, trends
 from radar.advisories import refresh_advisories
-from radar.apisurface import refresh_api_surface
+from radar.apisurface import backfill_api_surface, refresh_api_surface
 from radar.collect import run_collect
 from radar.collectors import Context
 from radar.config import load_entities, load_sources
@@ -22,6 +22,7 @@ from radar.publishing import publish_aux, publish_errata
 
 COLLECT_JOB, COLLECT_EVERY_S = "radar.collect", 3 * 3600
 API_JOB, API_EVERY_S = "radar.apisurface", 6 * 3600
+BACKFILL_JOB, BACKFILL_EVERY_S = "radar.apibackfill", 24 * 3600
 ADVISORY_JOB, ADVISORY_EVERY_S = "radar.advisories", 6 * 3600
 DIGEST_JOB = "radar.digest"
 ERRATA_JOB, ERRATA_EVERY_S = "radar.errata", 1800
@@ -38,6 +39,7 @@ def schedule_periodic(conn, now: float) -> None:
     store.ensure_schema(conn)
     schedule(conn, "radar", COLLECT_JOB, COLLECT_EVERY_S, now=now)
     schedule(conn, "radar", API_JOB, API_EVERY_S, now=now)
+    schedule(conn, "radar", BACKFILL_JOB, BACKFILL_EVERY_S, now=now)
     schedule(conn, "radar", ADVISORY_JOB, ADVISORY_EVERY_S, now=now)
     schedule(conn, "radar", ERRATA_JOB, ERRATA_EVERY_S, now=now)
     schedule(conn, "radar", AUX_JOB, AUX_EVERY_S, now=now)
@@ -66,6 +68,7 @@ def build_job_types(conn, github=None, backend=None, use_llm: bool = True, clien
         COLLECT_JOB: JobType("radar", [("collect", lambda job, out: run_collect(
             Context(conn=conn, github=github, client=client, now=clock()), sources))]),
         API_JOB: JobType("radar", [("apisurface", lambda job, out: refresh_api_surface(conn, fetcher, sources, clock()))]),
+        BACKFILL_JOB: JobType("radar", [("backfill", lambda job, out: backfill_api_surface(conn, fetcher, sources, clock()))]),
         ADVISORY_JOB: JobType("radar", [("advisories", lambda job, out: refresh_advisories(conn, client, sources, clock()))]),
         DIGEST_JOB: JobType("radar", digest.stages(conn, backend=backend, embedder=embedder, registry=registry,
                                                    sources=sources, data_root=data_root, model=model, clock=clock)),

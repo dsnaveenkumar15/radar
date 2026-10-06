@@ -1,0 +1,6 @@
+{
+ "x.old_call@app.py:2": {
+  "verdict": "confirmed",
+  "quote": "result = lib.old_call(1)"
+ }
+}

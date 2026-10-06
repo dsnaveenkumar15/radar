@@ -1,0 +1,26 @@
+{% extends "radar_base.html" %}
+{% block title %}Upgrade agent · {{ meta.name }}{% endblock %}
+{% block content %}
+<h1>Point it at your repo. Watch an agent find what breaks when you upgrade.</h1>
+<p class="lede">It reads your dependencies and code, checks every usage against the API changes Radar has recorded, verifies each finding against your real code, and writes a migration plan. Public repositories only; the findings are kept for 30 days and the code is discarded after the run.</p>
+<form id="agent-form" class="agent-form">
+  <label for="repo-url">Public GitHub repository</label>
+  <input id="repo-url" name="repo_url" type="text" inputmode="url" maxlength="300" placeholder="https://github.com/owner/repo" autocomplete="off">
+  <button type="submit"{% if not available %} disabled{% endif %}>Run the agent</button>
+  <p class="agent-avail {{ 'is-on' if available else 'is-off' }}">{{ "Live runs available today." if available else "Live runs are paused. Watch a recorded run below." }}</p>
+  <details>
+    <summary>Or paste a dependency file</summary>
+    <label for="paste-name">File name</label>
+    <input id="paste-name" maxlength="120" placeholder="requirements.txt">
+    <label for="paste-text">Contents</label>
+    <textarea id="paste-text" rows="8" maxlength="600000" placeholder="requirements.txt, pyproject.toml, package.json or a lock file"></textarea>
+    <p class="muted">A pasted file has no code, so it lists the changes that apply to your versions but cannot say which of your lines break.</p>
+  </details>
+  <p id="agent-error" class="notice" role="alert" hidden></p>
+</form>
+{% if showcases %}
+<h2 class="section-title">Recorded runs</h2>
+<ul class="agent-showcases">{% for s in showcases %}<li><a href="/agent/runs/{{ s.id }}">{{ s.input.repo_url or s.input.filename or s.id }}</a></li>{% endfor %}</ul>
+{% endif %}
+<script src="/static/radar-agent.js?v=1"></script>
+{% endblock %}

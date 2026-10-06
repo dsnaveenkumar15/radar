@@ -1,0 +1,34 @@
+{
+ "generated_at": 0,
+ "packages": {
+  "pypi:x": {
+   "ecosystem": "pypi",
+   "name": "x",
+   "versions": [
+    "1.0.0",
+    "2.0.0"
+   ],
+   "latest": "2.0.0",
+   "latest_symbols": [],
+   "steps": [
+    {
+     "from": "1.0.0",
+     "to": "2.0.0",
+     "breaking": [
+      {
+       "symbol": "x.fine",
+       "change": "params",
+       "detail": "argument a is now required"
+      },
+      {
+       "symbol": "x.other",
+       "change": "params",
+       "detail": "argument a is now required"
+      }
+     ],
+     "deprecations": []
+    }
+   ]
+  }
+ }
+}

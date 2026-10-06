@@ -4,7 +4,7 @@ import re
 
 from core.publish import load_current, prune, publish
 from radar.config import load_sources
-from radar import signal, store, supersession, upgrade
+from radar import changes, signal, store, supersession, upgrade
 from radar.versions import sorted_stable
 from radar.synth import PROMPT_VERSION
 
@@ -112,7 +112,8 @@ def aux_files(conn, digests: list[dict], now: float, sources=None) -> dict[str, 
     """Files derived from the database rather than from one digest: refreshed on a schedule, not only nightly."""
     starters = [s.package for s in (load_sources() if sources is None else sources) if s.options.get("starter")]
     return {"surface.json": _dump(surface_facts(conn, now, starters)), "packages.json": _dump(package_facts(conn, now)), "upgrade.json": _dump(upgrade.upgrade_facts(conn, now, digests)),
-            "supersessions.json": _dump(supersession.all_supersessions(conn, digests))}
+            "supersessions.json": _dump(supersession.all_supersessions(conn, digests)),
+            "api_changes.json": _dump(changes.api_changes(conn, now))}
 
 
 def _same_content(old: bytes | None, new: bytes) -> bool:

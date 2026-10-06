@@ -82,7 +82,7 @@ def _renames(removed: list[str], added: list[str], old: dict, new: dict) -> dict
     return pairs
 
 
-def diff_snapshots(old: dict, new: dict) -> dict:
+def diff_snapshots(old: dict, new: dict, limit: int | None = MAX_LIST, added_limit: int | None = MAX_ADDED) -> dict:
     a, b = old["symbols"], new["symbols"]
     removed, added = sorted(set(a) - set(b)), sorted(set(b) - set(a))
     renames = _renames(removed, added, a, b)
@@ -127,12 +127,12 @@ def diff_snapshots(old: dict, new: dict) -> dict:
     deprecations = [c for c in changes if c["change"] == "deprecated"]
     other = [c for c in changes if c["severity"] != "breaking" and c["change"] != "deprecated"]
     added_names = [n for n in added if n not in set(renames.values())]
-    return {"breaking": breaking[:MAX_LIST], "deprecations": deprecations[:MAX_LIST], "other": other[:MAX_LIST],
-            "added": added_names[:MAX_ADDED],
+    return {"breaking": breaking[:limit], "deprecations": deprecations[:limit], "other": other[:limit],
+            "added": added_names[:added_limit],
             "counts": {"breaking": len(breaking), "deprecations": len(deprecations), "added": len(added_names),
                        "removed": len(removed)},
-            "truncated": len(breaking) > MAX_LIST or len(deprecations) > MAX_LIST or len(other) > MAX_LIST
-                         or len(added_names) > MAX_ADDED}
+            "truncated": (limit is not None and (len(breaking) > limit or len(deprecations) > limit or len(other) > limit))
+                         or (added_limit is not None and len(added_names) > added_limit)}
 
 
 def breaking_symbols(diff: dict) -> list[str]:

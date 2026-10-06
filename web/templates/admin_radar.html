@@ -1,3 +1,7 @@
+<h2>Upgrade agent</h2>
+<p class="mono">today ${{ "%.4f"|format(agent_spend) }} of ${{ "%.2f"|format(agent_cap) }} · {% if not agent_configured %}not configured (no key or AGENT_ENABLED){% elif agent_switch %}live runs on{% else %}live runs OFF (switch){% endif %}</p>
+<form method="post" action="/admin/agent/toggle"><button>{{ "Turn live runs off" if agent_switch else "Turn live runs on" }}</button></form>
+
 <h2>Radar</h2>
 <p class="mono">latest digest: {% if radar_latest %}{{ radar_latest.date }} · {{ radar_latest.status }} · {{ radar_latest.synthesis }}{% else %}none yet{% endif %}</p>
 <table>

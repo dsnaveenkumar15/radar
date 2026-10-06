@@ -26,7 +26,7 @@ def seed_release(tmp_path, *digests):
 def test_aux_files_are_packages_and_upgrade_json(db):
     populated(db)
     files = aux_files(db, [], NOW)
-    assert set(files) == {"packages.json", "upgrade.json", "supersessions.json", "surface.json"}
+    assert set(files) == {"packages.json", "upgrade.json", "supersessions.json", "surface.json", "api_changes.json"}
     assert "pypi:libx" in json.loads(files["upgrade.json"])["packages"]
 
 

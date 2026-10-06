@@ -42,6 +42,12 @@ class RadarData(PublishedData):
         first = digests[0] if digests else None
         return self.digest(first["date"]) if isinstance(first, dict) and isinstance(first.get("date"), str) else None
 
+    def api_changes(self) -> dict:
+        data = self._json("api_changes.json", {})
+        if not isinstance(data, dict) or not isinstance(data.get("packages"), dict):
+            return {"generated_at": 0, "packages": {}}
+        return data
+
     def upgrade(self) -> dict:
         data = self._json("upgrade.json", {})
         if not isinstance(data, dict) or not isinstance(data.get("packages"), dict):

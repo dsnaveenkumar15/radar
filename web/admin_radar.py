@@ -6,6 +6,8 @@ from fastapi.responses import RedirectResponse
 
 from core import review
 from radar import store as radar_store
+from radar.agent import runs as agent_runs
+from radar.agent.config import load_config
 from radar.config import load_entities
 from web.admin import get_db, require_admin
 from web.radar_site import CLUSTER, DATE
@@ -17,13 +19,24 @@ def section(conn, now: float) -> dict:
     """What the dashboard needs for the Radar sections."""
     radar_store.ensure_schema(conn)
     latest = conn.execute("SELECT date, status, synthesis FROM radar_digests ORDER BY date DESC LIMIT 1").fetchone()
+    agent_runs.ensure_schema(conn)
+    cfg = load_config()
     return {"radar_failing": radar_store.failing_sources(conn, now), "radar_latest": latest,
-            "entity_ids": [e.id for e in load_entities().entities], "manual_updates": radar_store.supersessions(conn)}
+            "entity_ids": [e.id for e in load_entities().entities], "manual_updates": radar_store.supersessions(conn),
+            "agent_spend": agent_runs.day_spend(conn, now), "agent_cap": cfg.daily_usd, "agent_configured": cfg.enabled,
+            "agent_switch": agent_runs.is_enabled(conn)}
 
 
 def _decide(conn, review_id: str, note: str) -> None:
     if review_id.strip().isdigit():
         review.decide(conn, int(review_id), "approved", note)
+
+
+@router.post("/agent/toggle")
+def toggle_agent(conn=Depends(get_db)):
+    agent_runs.ensure_schema(conn)
+    agent_runs.set_enabled(conn, not agent_runs.is_enabled(conn))
+    return RedirectResponse("/admin", status_code=303)
 
 
 @router.post("/errata")

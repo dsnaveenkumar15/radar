@@ -1,0 +1,6 @@
+{
+ "x.models.Legacy@app.py:2": {
+  "verdict": "confirmed",
+  "quote": "obj = Legacy()"
+ }
+}

@@ -89,6 +89,32 @@ $env:DB_PATH = "data\radar.db"; $env:DATA_ROOT = "data\radar-published"
 - `/trends`: weekly counts per entity computed from the published digests, plus one validated model note per week (rising and falling entities, patterns). The code drops any claim whose direction, cluster ids or numbers the counts do not support; without a model a week is published with counts only.
 - Jobs: `radar.aux` (every 6 h) refreshes `packages.json`, `upgrade.json` and `supersessions.json` inside the current release; `radar.trends` runs in the night window and publishes the previous ISO week once.
 
+### Radar upgrade agent (`/agent`)
+
+A visitor gives a public GitHub repository (or pastes a dependency file) and watches an agent find what breaks when the
+tracked AI libraries are upgraded. Spec: `docs/superpowers/specs/2026-10-06-radar-upgrade-agent-design.md`; plan:
+`docs/superpowers/plans/2026-10-06-radar-upgrade-agent.md`.
+
+- **Graph (LangGraph):** `fetch_inputs -> parse_deps -> ground -> index_code -> plan -> investigate (loop) -> verify -> report`.
+  Everything except plan, investigate and the report text is plain Python. Findings are accepted only after
+  `radar/agent/verify.py` (code, not a model) has matched each quoted line against the real file.
+- **Data:** `api_changes.json` (published with the digests) holds every version step of every tracked package, uncapped.
+  The daily `radar.apibackfill` job snapshots the last ~2 years of minor releases (40 downloads per run; fill it at once
+  with `python -m radar.cli backfill`, a few times).
+- **Models:** OpenAI-compatible chat models on OpenRouter through `radar/agent/gateway.py` (backup model, cost from the
+  provider response, budgets checked before every call). Settings (web `.env`; the batch worker does not need them):
+  `AGENT_ENABLED=1`, `OPENROUTER_API_KEY`, `AGENT_FAST_MODELS` and `AGENT_STRONG_MODELS` (comma lists, primary first),
+  `AGENT_PRICES` (`model=in/out;...` USD per million tokens, used when the provider reports no cost), `AGENT_DAILY_USD`
+  (default 1.0), and `GITHUB_TOKEN` (repo fetches; same read-only token as `batch.env`).
+- **Limits:** per run 8 candidates, 30 tool calls, about 60k tokens, 2 minutes, $0.05; per visitor 3 runs a day and one at
+  a time; 2 runs at once with a queue of 3; **$1.00 a day** for the whole site. Admin has a kill switch and today's spend.
+- **Showcase replays:** run the agent on a demo repository, then mark the run:
+  `UPDATE agent_runs SET showcase=1 WHERE id='...'` (in the app database). Replays cost nothing and never expire.
+- **Evaluation:** `python -m evals.radar_agent_eval` scores 8 offline cases (precision at least 0.9, recall at least 0.8; CI
+  runs the same gate); `--live` runs the same cases with the real models for a few cents before a deploy.
+- Runs execute on background threads in the web container; a restart marks runs in flight as failed. No checkpoint
+  store is used in production (the graph accepts one: state holds the repo files).
+
 ## Deploy (VPS)
 
 1. DNS A record `radar` pointing at the VPS IP; Traefik runs on the VPS.
