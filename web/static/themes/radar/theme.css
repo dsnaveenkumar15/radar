@@ -1,0 +1,118 @@
+/* Radar: instrument panel. Loaded after site.css on Radar pages only. Warm graphite and amber, mono-led, square cells
+   and hairlines. Token blocks first (contract checked by tests/test_themes.py), then components. */
+@font-face { font-family: "JetBrains Mono"; src: url("/static/themes/radar/fonts/jetbrains-mono-latin.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "Space Grotesk"; src: url("/static/themes/radar/fonts/space-grotesk-latin.woff2") format("woff2"); font-weight: 500 700; font-display: swap; }
+
+.planet-radar {
+  --bg: #F4F1E8; --surface: #FBF9F3; --surface-2: #ECE8DC; --ink: #1E1C15; --ink-2: #3D3A30; --muted: #6A6658;
+  --rule: rgba(30, 28, 21, 0.12); --rule-2: rgba(30, 28, 21, 0.22); --field: rgba(30, 28, 21, 0.30);
+  --accent: #8F5300; --accent-ink: #FFFFFF; --accent-soft: #F1E2C4;
+  --ok: #2A7040; --ok-soft: #DCEBDD; --warn: #8F5300; --warn-soft: #F1E2C4; --bad: #B42E24; --bad-soft: #F5DCD7;
+  --mark: #F1D79A;
+  --sig-break: #B42E24; --sig-depr: #8F5300; --sig-cve: #2A7040; --grid: rgba(143, 83, 0, 0.22);
+  --shadow-1: none; --shadow-2: none;
+  --sans: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --display: "Space Grotesk", system-ui, sans-serif;
+  --r-sm: 2px; --r-md: 2px; --r-lg: 3px;
+}
+:root[data-theme="dark"] .planet-radar {
+  --bg: #0E0F0C; --surface: #14150F; --surface-2: #1C1D16; --ink: #E9E6DA; --ink-2: #C9C5B6; --muted: #8C8878;
+  --rule: rgba(245, 166, 35, 0.14); --rule-2: rgba(245, 166, 35, 0.26); --field: rgba(233, 230, 218, 0.28);
+  --accent: #F5A623; --accent-ink: #14150F; --accent-soft: rgba(245, 166, 35, 0.14);
+  --ok: #7BD88F; --ok-soft: rgba(123, 216, 143, 0.12); --warn: #F5A623; --warn-soft: rgba(245, 166, 35, 0.12);
+  --bad: #FF6B5B; --bad-soft: rgba(255, 107, 91, 0.12); --mark: rgba(245, 166, 35, 0.30);
+  --sig-break: #FF6B5B; --sig-depr: #F5A623; --sig-cve: #7BD88F; --grid: rgba(245, 166, 35, 0.20);
+}
+
+/* Base type: mono for everything, the grotesk for headlines only. */
+.planet-radar { font: 400 14.5px/1.65 var(--sans); letter-spacing: -0.005em; }
+.planet-radar h1, .planet-radar h2, .planet-radar h3 { font-family: var(--display); letter-spacing: -0.02em; }
+.planet-radar h1 { font-weight: 700; }
+
+/* Bar: hairline, uppercase sections, amber underline for the current one. */
+.planet-radar .bar { background: color-mix(in srgb, var(--bg) 90%, transparent); border-bottom-color: var(--rule-2); }
+.planet-radar .brand { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+.planet-radar .brand img { border-radius: 0; }
+.planet-radar .subnav a { border-radius: 0; padding: 6px 10px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid transparent; }
+.planet-radar .subnav a:hover { background: transparent; color: var(--ink); border-bottom-color: var(--rule-2); }
+.planet-radar .subnav a[aria-current="page"] { background: transparent; color: var(--accent); border-bottom-color: var(--accent); }
+.planet-radar .family { font-size: 12px; letter-spacing: 0.04em; }
+.planet-radar .theme-toggle { border-radius: 2px !important; }
+
+/* Controls: square, uppercase, mono. */
+.planet-radar .btn, .planet-radar button, .planet-radar input[type=submit] { height: 40px; border-radius: 2px; font: 600 12.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink); }
+:root[data-theme="dark"] .planet-radar .btn, :root[data-theme="dark"] .planet-radar button, :root[data-theme="dark"] .planet-radar input[type=submit] { color: var(--accent-ink); }
+.planet-radar .btn-quiet, :root[data-theme="dark"] .planet-radar .btn-quiet { background: transparent; color: var(--ink); border-color: var(--rule-2); box-shadow: none; }
+.planet-radar input[type=text], .planet-radar input[type=url], .planet-radar input[type=search], .planet-radar select, .planet-radar textarea { border-radius: 2px; font-family: var(--mono); font-size: 14px; }
+.planet-radar .chip, .planet-radar .badge { height: 22px; padding: 0 8px; border-radius: 2px; font: 500 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; background: transparent; border: 1px solid var(--rule-2); color: var(--muted); }
+.planet-radar .badge.new { background: transparent; border-color: var(--accent); color: var(--accent); }
+
+/* Surfaces: hairlines, no shadows, square corners. */
+.planet-radar .window, .planet-radar table, .planet-radar fieldset, .planet-radar pre, .planet-radar .notice, .planet-radar .stack,
+.planet-radar .finding, .planet-radar .checklist li, .planet-radar .agent-card { border-radius: 2px; box-shadow: none; }
+.planet-radar th { background: transparent; font: 500 11px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.planet-radar td { border-bottom: 1px dashed var(--rule); font-size: 13.5px; }
+.planet-radar .notice { background: var(--warn-soft); border-left: 2px solid var(--warn); }
+.planet-radar .section-title { font: 600 12px/1.4 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); border-top-color: var(--rule-2); }
+
+/* Digest: clusters as ticker rows with signal glyphs. */
+.planet-radar .cluster { background: transparent; margin: 0 !important; padding: 18px 0 18px 28px; border-width: 0 0 1px 0 !important; border-style: dashed !important; border-color: var(--rule-2) !important; border-radius: 0 !important; }
+.planet-radar .cluster::before { content: "\25CB"; top: 18px; bottom: auto; width: auto; background: none; color: var(--muted); font: 600 13px/1.4 var(--mono); }
+.planet-radar .impact-breaking::before { content: "\25B2"; color: var(--sig-break); background: none; }
+.planet-radar .impact-notable::before { content: "\25C6"; color: var(--sig-depr); background: none; }
+.planet-radar .cluster.is-new { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.planet-radar .cluster h2 { font-size: 18px; }
+
+/* Agent pages keep their structure; instrument styling only. */
+.planet-radar .map-node text { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; }
+.planet-radar .agent-card[data-status="verified"] { border-color: var(--sig-break); }
+
+/* Footer */
+.planet-radar .foot h2 { font: 600 11px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* Home: the instrument panel. */
+.radar-hero { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 32px; padding: 44px 0 28px; }
+.radar-hero h1 { margin: 0; flex: 1 1 520px; font-size: clamp(30px, 4vw, 46px); line-height: 1.05; max-width: 22ch; }
+.radar-hero p { margin: 0; max-width: 52ch; }
+.radar-hero .live { flex-basis: 100%; max-width: none; font: 600 11.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ok); }
+.dash { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); margin: 8px 0 56px; border-top: 1px solid var(--rule-2); border-left: 1px solid var(--rule-2); }
+.cell { min-width: 0; padding: 18px 20px 20px; background: var(--surface); border-right: 1px solid var(--rule-2); border-bottom: 1px solid var(--rule-2); }
+.cell-digest, .cell-agent { grid-column: span 7; }
+.cell-sweep, .cell-activity { grid-column: span 5; }
+.cell-packages { grid-column: 1 / -1; }
+.planet-radar .cell-h { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; font: 600 11px/1.2 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.cell-h .ic { width: 14px; height: 14px; color: var(--accent); flex: none; }
+.cell-h a { margin-left: auto; color: var(--accent); text-decoration: none; }
+.cell p { max-width: none; }
+.tick { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; margin: 0; padding: 9px 0; border-bottom: 1px dashed var(--rule); font-size: 13.5px; }
+.tick:last-of-type { border-bottom: 0; }
+.tick a { color: var(--ink); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tick a:hover { color: var(--accent); text-decoration: none; }
+.sig { font: 600 11.5px/1.6 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.sig-breaking { color: var(--sig-break); } .sig-notable { color: var(--sig-depr); } .sig-minor { color: var(--muted); } .sig-ok { color: var(--sig-cve); }
+.sweep { display: block; width: 100%; max-width: 280px; margin: 0 auto; }
+.sweep .ring { fill: none; stroke: var(--grid); }
+.sweep .axis { stroke: var(--grid); }
+.sweep .arm { fill: var(--accent); opacity: 0.16; transform-box: view-box; transform-origin: 50% 50%; }
+.sweep .pt { stroke: var(--surface); stroke-width: 2; }
+.pt-break { fill: var(--sig-break); } .pt-cve { fill: var(--sig-depr); } .pt-ok { fill: var(--sig-cve); }
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin: 12px 0 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .sweep .arm { animation: radar-sweep 9s linear infinite; }
+  @keyframes radar-sweep { to { transform: rotate(360deg); } }
+}
+.runs { list-style: none; margin: 16px 0 0; padding: 0; font-size: 12.5px; }
+.runs li { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px dashed var(--rule); max-width: none; }
+.runs a { color: var(--ink); text-decoration: none; }
+.activity { display: block; width: 100%; height: 96px; }
+.activity .b-total { fill: var(--rule-2); }
+.activity .b-break { fill: var(--sig-break); }
+.activity-cap { display: flex; justify-content: space-between; margin: 8px 0 0; font: 500 11px var(--mono); color: var(--muted); }
+.pkg { border: 0; background: transparent; }
+.pkg th, .pkg td { padding: 9px 12px; }
+@media (max-width: 900px) {
+  .cell-digest, .cell-agent, .cell-sweep, .cell-activity { grid-column: 1 / -1; }
+  .tick { grid-template-columns: 1fr; gap: 2px; }
+}
+.planet-radar input[type=file]::file-selector-button { border-radius: 2px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; }

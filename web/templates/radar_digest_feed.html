@@ -1,0 +1,50 @@
+<p>
+  <span class="badge">{{ d.status }}</span>
+  <span class="badge">{{ d.synthesis }}</span>
+  <span class="badge">{{ d.sources.checked }}/{{ d.sources.total }} sources checked</span>
+  {% if errata_total %}<span class="badge">{{ errata_total }} correction(s)</span>{% endif %}
+</p>
+{% if d.status == "partial" %}
+<div class="notice"><strong>Partial digest.</strong> Some official sources could not be checked{% if d.sources.failed %}: <span class="mono">{{ d.sources.failed | join(", ") }}</span>{% endif %}. Items from them may be missing.</div>
+{% endif %}
+{% if d.synthesis != "complete" %}
+<div class="notice"><strong>{{ "Unsynthesized." if d.synthesis == "unsynthesized" else "Partly unsynthesized." }}</strong> The model was unavailable for {{ "every" if d.synthesis == "unsynthesized" else "some" }} cluster. Impact labels and facts are computed from API diffs and advisories; written summaries are missing.</div>
+{% endif %}
+<section id="stack" class="stack" data-tags="{{ tags | join(' ') }}" hidden>
+  <h2>My stack</h2>
+  <p class="muted">Pick what you use. The choice stays in this browser.</p>
+  <div id="stack-options"></div>
+  <p id="stack-count" class="muted"></p>
+</section>
+{% for c in d.clusters %}
+<article class="cluster impact-{{ c.impact }}" id="{{ c.id }}" data-cluster="{{ c.id }}" data-generated="{{ d.generated_at | int }}" data-affects="{{ c.affects | join(' ') }}">
+  <h2><a href="/c/{{ d.date }}/{{ c.id }}">{{ c.title }}</a></h2>
+  <p>
+    <span class="badge">{{ c.impact }}</span>
+    <span class="badge mono">signal {{ c.signal.score }}</span>
+    {% for t in c.affects %}<span class="badge">{{ t }}</span>{% endfor %}
+    {% if c.id in corrected %}<span class="badge">corrected</span>{% endif %}
+    {% if c.id in updated %}<span class="badge">updated</span>{% endif %}
+    <span class="badge new" hidden>new</span>
+  </p>
+  {% if c.synthesis %}
+  <p>{{ c.synthesis.what_changed }}</p>
+  <p class="muted">{{ c.synthesis.action }}</p>
+  {% else %}
+  <p class="muted">Unsynthesized. Sources: {% for i in c["items"][:3] %}{{ i.title }}{% if not loop.last %}; {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% if c.facts.api_breaking %}<p class="mono">API break: {{ c.facts.api_breaking[0].symbols[:3] | join(", ") }}{% if c.facts.api_breaking[0].symbols | length > 3 %} …{% endif %}</p>{% endif %}
+</article>
+{% else %}
+<p class="muted">Nothing cleared the bar this night.</p>
+{% endfor %}
+{% if d.new_servers %}
+<h2>New MCP servers</h2>
+<ul>
+  {% for s in d.new_servers %}{% set href = s.url | safe_url %}
+  <li><span class="mono">{% if href %}<a href="{{ href }}" rel="nofollow noopener">{{ s.repo }}</a>{% else %}{{ s.repo }}{% endif %}</span> — {{ s.description }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+<p class="muted mono">digest {{ d.date }} · prompt {{ d.provenance.prompt }} · model {{ d.provenance.model }} · signal {{ d.provenance.signal }} · generated {{ d.generated_at | datetime }} UTC</p>
+<script src="/static/radar-live.js"></script>

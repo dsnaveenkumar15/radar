@@ -82,6 +82,11 @@ $env:DB_PATH = "data\radar.db"; $env:DATA_ROOT = "data\radar-published"
 # then open http://radar.localhost:8000/
 ```
 
+- **Look:** Radar has its own theme pack in `web/static/themes/radar/` (instrument panel: graphite and amber, mono type,
+  square cells, a radar sweep). `web/planets.py` turns it on (`theme`); `base.html` loads it after `site.css` and sets
+  the signature mode (dark) used when a visitor has not picked one. The home is a dashboard (`web/radar_dashboard.py`,
+  `radar_home.html`) followed by the full digest. Spec: `docs/superpowers/specs/2026-10-06-ai-apps-visual-identity-design.md`.
+
 ### Radar v1.1
 
 - `/upgrade`: paste a `requirements.txt`, `package.json`, `package-lock.json`, `poetry.lock` or `uv.lock`. The file is read in the browser and never sent anywhere; no model is involved. The report lists breaking changes, deprecations, migrations and open advisories between your pinned versions and the latest, from `upgrade.json`. Radar diffs the releases it has watched (the newest two stable versions per package at each refresh), so coverage grows over time; anything before the earliest snapshot is reported as not covered, and a package Radar does not track is never reported as safe.

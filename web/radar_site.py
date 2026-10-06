@@ -137,25 +137,36 @@ def _updates(request: Request, date: str) -> dict[str, list[dict]]:
     return out
 
 
-def _digest_response(request: Request, digest: dict, latest: bool):
-    from web.app import render   # local import: web.app includes this router
+def _digest_context(request: Request, digest: dict, latest: bool) -> dict:
     d = normalise(digest)
     ids = {c["id"] for c in d["clusters"]}
     errata = {k: v for k, v in _corrections(request, d["date"]).items() if k in ids}
     registry = request.app.state.radar_registry
     for c in d["clusters"]:
         c["affects"] = derive_tags(c, registry)
-    tags = sorted({t for c in d["clusters"] for t in c["affects"]})
-    return render(request, "radar_digest.html", d=d, latest=latest, tags=tags, corrected=set(errata), updated=set(_updates(request, d["date"])) & ids,
-                  errata_total=sum(len(v) for v in errata.values()))
+    return {"d": d, "latest": latest, "tags": sorted({t for c in d["clusters"] for t in c["affects"]}),
+            "corrected": set(errata), "updated": set(_updates(request, d["date"])) & ids,
+            "errata_total": sum(len(v) for v in errata.values())}
+
+
+def _digest_response(request: Request, digest: dict, latest: bool):
+    from web.app import render   # local import: web.app includes this router
+    return render(request, "radar_digest.html", **_digest_context(request, digest, latest))
 
 
 def home(request: Request):
+    from web import radar_dashboard
     from web.app import render
-    latest = request.app.state.radar_data.latest()
+    data = request.app.state.radar_data
+    latest = data.latest()
     if latest is None:
         return render(request, "radar_empty.html")
-    return _digest_response(request, latest, True)
+    context = _digest_context(request, latest, True)
+    rows = radar_dashboard.packages(data.upgrade())
+    dash = {"ticker": radar_dashboard.ticker(context["d"]), "packages": rows, "sweep": radar_dashboard.sweep(rows),
+            "activity": radar_dashboard.activity(data.index()),
+            "runs": radar_dashboard.recorded_runs(request.app.state.settings.db_path)}
+    return render(request, "radar_home.html", dash=dash, **context)
 
 
 @router.get("/digests/{date}", response_class=HTMLResponse)

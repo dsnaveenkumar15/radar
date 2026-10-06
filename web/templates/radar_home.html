@@ -1,0 +1,55 @@
+{% extends "radar_base.html" %}
+{% block title %}{{ meta.name }} · {{ meta.tagline }}{% endblock %}
+{% block hero %}{% endblock %}
+{% block content %}
+<section class="radar-hero" aria-labelledby="hero-title">
+  <h1 id="hero-title">{{ meta.headline }}</h1>
+  <p>{{ meta.lede }}</p>
+  <p class="live">&#9679; Live{% if dash.packages %} · {{ dash.packages | length }} packages tracked{% endif %} · digest {{ d.date }}</p>
+</section>
+<div class="dash">
+  <section class="cell cell-digest" aria-labelledby="h-digest">
+    <h2 class="cell-h" id="h-digest"><svg class="ic" aria-hidden="true"><use href="/static/themes/radar/icons.svg#i-digest"/></svg>Today's digest · {{ d.date }}<a href="#digest">Full digest</a></h2>
+    {% for t in dash.ticker %}<p class="tick"><span class="sig sig-{{ t.impact }}">{{ t.glyph }} {{ t.label }}</span><a href="#{{ t.id }}">{{ t.title }}</a></p>
+    {% else %}<p class="muted">Nothing cleared the bar this night.</p>{% endfor %}
+  </section>
+  {% if dash.sweep %}
+  <section class="cell cell-sweep" aria-labelledby="h-sweep">
+    <h2 class="cell-h" id="h-sweep"><svg class="ic" aria-hidden="true"><use href="/static/themes/radar/icons.svg#i-sweep"/></svg>Sweep · tracked packages</h2>
+    <svg class="sweep" viewBox="0 0 240 240" role="img" aria-label="Tracked packages placed by how urgent their changes are; nearer the centre is more urgent">
+      <circle class="ring" cx="120" cy="120" r="108"/><circle class="ring" cx="120" cy="120" r="72"/><circle class="ring" cx="120" cy="120" r="36"/>
+      <path class="axis" d="M12 120H228M120 12V228"/>
+      <path class="arm" d="M120 120 L120 12 A108 108 0 0 1 213.5 66 Z"/>
+      {% for p in dash.sweep %}<circle class="pt pt-{{ p.level }}" cx="{{ p.x }}" cy="{{ p.y }}" r="5"><title>{{ p.label }}: {{ p.note }}</title></circle>{% endfor %}
+    </svg>
+    <p class="legend"><span class="sig sig-breaking">&#9650; breaking</span><span class="sig sig-notable">&#9670; advisory on latest</span><span class="sig sig-ok">&#9679; clear</span></p>
+  </section>
+  {% endif %}
+  <section class="cell cell-agent" aria-labelledby="h-agent">
+    <h2 class="cell-h" id="h-agent"><svg class="ic" aria-hidden="true"><use href="/static/themes/radar/icons.svg#i-agent"/></svg>Upgrade agent<a href="/agent">Open</a></h2>
+    <p>Point it at a public repository. It finds the lines that break when you upgrade, checks each one against your code, and writes the fix.</p>
+    <p class="actions"><a class="btn" href="/agent">Run the agent</a><a class="btn btn-quiet" href="/upgrade">Check a dependency file</a></p>
+    {% if dash.runs %}<ul class="runs">{% for r in dash.runs %}<li><a href="/agent/runs/{{ r.id }}">{{ r.repo }}</a><span class="muted">${{ "%.4f" | format(r.cost) }}</span></li>{% endfor %}</ul>{% endif %}
+  </section>
+  {% if dash.activity %}
+  <section class="cell cell-activity" aria-labelledby="h-activity">
+    <h2 class="cell-h" id="h-activity"><svg class="ic" aria-hidden="true"><use href="/static/themes/radar/icons.svg#i-activity"/></svg>Last {{ dash.activity | length }} digests<a href="/archive">Archive</a></h2>
+    <svg class="activity" viewBox="0 0 {{ dash.activity | length * 20 }} 56" role="img" aria-label="Updates per digest, breaking ones highlighted">
+      {% for b in dash.activity %}<rect class="b-total" x="{{ b.x }}" y="{{ b.y_total }}" width="14" height="{{ b.h_total }}"><title>{{ b.date }}: {{ b.clusters }} updates, {{ b.breaking }} breaking</title></rect><rect class="b-break" x="{{ b.x }}" y="{{ b.y_break }}" width="14" height="{{ b.h_break }}"/>{% endfor %}
+    </svg>
+    <p class="activity-cap"><span>{{ dash.activity[0].date }}</span><span>{{ dash.activity[-1].date }}</span></p>
+  </section>
+  {% endif %}
+  {% if dash.packages %}
+  <section class="cell cell-packages" aria-labelledby="h-packages">
+    <h2 class="cell-h" id="h-packages"><svg class="ic" aria-hidden="true"><use href="/static/themes/radar/icons.svg#i-packages"/></svg>Tracked packages<a href="/upgrade">Check yours</a></h2>
+    <table class="pkg">
+      <thead><tr><th>Package</th><th>Latest</th><th class="num">Breaking</th><th class="num">Advisories on latest</th><th>Versions compared</th></tr></thead>
+      <tbody>{% for p in dash.packages %}<tr><td><span class="sig sig-{{ 'breaking' if p.level == 'break' else ('notable' if p.level == 'cve' else 'ok') }}">{{ ('&#9650;' if p.level == 'break' else ('&#9670;' if p.level == 'cve' else '&#9679;')) | safe }}</span> {{ p.key }}</td><td>{{ p.latest }}</td><td class="num">{{ p.breaking }}</td><td class="num">{{ p.advisories }}</td><td class="muted">{{ p.span }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+  {% endif %}
+</div>
+<h2 class="section-title" id="digest">Latest digest, {{ d.date }}</h2>
+{% include "radar_digest_feed.html" %}
+{% endblock %}
