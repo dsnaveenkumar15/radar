@@ -1,4 +1,4 @@
-"""Run one Radar job by hand: collect | apisurface | backfill | advisories | digest. Prints the stage outputs as JSON."""
+"""Run one Radar job by hand: collect | apisurface | backfill | aux | advisories | digest. Prints the stage outputs as JSON."""
 import argparse
 import json
 import os
@@ -11,7 +11,7 @@ from radar import jobs as radar_jobs
 from radar.digest import digest_date
 
 COMMANDS = {"collect": radar_jobs.COLLECT_JOB, "apisurface": radar_jobs.API_JOB,
-            "backfill": radar_jobs.BACKFILL_JOB,
+            "backfill": radar_jobs.BACKFILL_JOB, "aux": radar_jobs.AUX_JOB,
             "advisories": radar_jobs.ADVISORY_JOB, "digest": radar_jobs.DIGEST_JOB}
 
 
