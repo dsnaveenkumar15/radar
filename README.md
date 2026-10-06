@@ -58,7 +58,8 @@ The Radar web pages, Ask Radar and RSS are M2b.
 
 The Radar host serves the published digests: `/` (latest), `/digests/<date>`, `/archive`, `/c/<date>/<cluster>`,
 `/sources` (source health, the public signal formula, what is validated), `/feed.xml` (breaking and notable
-clusters of the last 14 digests) and `/ask`.
+clusters of the last 14 digests, for feed readers; the nav's RSS link opens `/feed`, a page that explains the feed,
+copies its address and lists its current items) and `/ask`.
 
 - **My stack** and **since last visit** run in the browser (`localStorage`); nothing about a visitor reaches the server.
 - **Ask Radar** (`POST /api/ask`, 10 per minute per IP): "what broke in <package> [since <version>]" and

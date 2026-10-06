@@ -116,3 +116,8 @@
   .tick { grid-template-columns: 1fr; gap: 2px; }
 }
 .planet-radar input[type=file]::file-selector-button { border-radius: 2px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; }
+
+/* Feed page */
+.feed-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 20px 0 8px; }
+.feed-box input { flex: 1 1 320px; min-width: 0; }
+.feed-items td .muted { display: block; margin-top: 4px; font-size: 13px; }

@@ -1,0 +1,26 @@
+{% extends "radar_base.html" %}
+{% block title %}RSS feed · {{ meta.name }}{% endblock %}
+{% block content %}
+<h1>Follow Radar in your feed reader</h1>
+<p>The feed carries every <strong>breaking</strong> and <strong>notable</strong> update from the last {{ days }} digests, newest first. Minor updates stay on the site. Add this address to any RSS reader:</p>
+<div class="feed-box">
+  <input type="text" id="feed-url" value="{{ feed_url }}" readonly aria-label="Feed address">
+  <button type="button" data-copy="feed-url">Copy</button>
+  <a class="btn btn-quiet" href="/feed.xml">Open the raw feed</a>
+</div>
+<p class="muted" id="feed-copied" role="status" aria-live="polite"></p>
+
+<h2 class="section-title">In the feed now</h2>
+{% if entries %}
+<table class="feed-items">
+  <thead><tr><th>Digest</th><th>Impact</th><th>Update</th></tr></thead>
+  <tbody>
+    {% for d, c in entries %}<tr><td class="mono">{{ d.date }}</td><td><span class="status status-{{ 'bad' if c.impact == 'breaking' else 'warn' }}">{{ c.impact | capitalize }}</span></td><td><a href="/c/{{ d.date }}/{{ c.id }}">{{ c.title }}</a>{% if c.synthesis %}<br><span class="muted">{{ c.synthesis.what_changed }}</span>{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No breaking or notable updates in the last {{ days }} digests. The feed stays quiet until there is one worth your attention.</p>
+{% endif %}
+<script src="/static/radar-feed.js?v=1"></script>
+{% endblock %}

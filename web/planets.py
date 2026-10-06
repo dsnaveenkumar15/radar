@@ -17,7 +17,7 @@ PLANETS = {
         "lede": "Radar follows the releases of the libraries AI apps are built on and tells you which breaking "
                 "changes, deprecations and advisories sit between your versions and the latest.",
         "action": ("Check my dependencies", "/upgrade"), "second": ("Ask about a change", "/ask"),
-        "theme": {"default": "dark", "css": "/static/themes/radar/theme.css?v=4", "mark": "/static/themes/radar/mark.svg",
+        "theme": {"default": "dark", "css": "/static/themes/radar/theme.css?v=5", "mark": "/static/themes/radar/mark.svg",
                   "preload": ["/static/themes/radar/fonts/jetbrains-mono-latin.woff2"]},
         "steps": [("Paste your dependency file", "requirements.txt, package.json or a lock file. It is read in your "
                                                  "browser."),

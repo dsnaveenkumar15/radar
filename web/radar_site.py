@@ -214,9 +214,13 @@ def _x(text) -> str:
     return escape(_XML_ILLEGAL.sub("", str(text)))
 
 
-def feed_xml(request: Request) -> str:
+def _feed_base(request: Request) -> str:
     settings = request.app.state.settings
-    base = f"{settings.public_scheme}://{settings.hosts['radar']}{settings.public_port}"
+    return f"{settings.public_scheme}://{settings.hosts['radar']}{settings.public_port}"
+
+
+def feed_entries(request: Request) -> list[tuple[dict, dict]]:
+    """(digest, cluster) pairs the feed carries: breaking and notable updates from recent digests, newest first."""
     data = request.app.state.radar_data
     entries = []
     for row in data.index()["digests"][:RSS_DIGESTS]:
@@ -225,7 +229,12 @@ def feed_xml(request: Request) -> str:
             continue
         d = normalise(digest)
         entries += [(d, c) for c in d["clusters"] if c["impact"] in FEED_IMPACTS]
-    entries = entries[:RSS_ITEMS]
+    return entries[:RSS_ITEMS]
+
+
+def feed_xml(request: Request) -> str:
+    base = _feed_base(request)
+    entries = feed_entries(request)
     items = []
     for d, c in entries:
         link = f"{base}/c/{d['date']}/{c['id']}"
@@ -244,6 +253,14 @@ def feed_xml(request: Request) -> str:
 @router.get("/feed.xml")
 def feed(request: Request):
     return Response(feed_xml(request), media_type="application/rss+xml")
+
+
+@router.get("/feed", response_class=HTMLResponse)
+def feed_page(request: Request):
+    """The feed for people: what it is, its address to copy into a reader, and the items it carries now."""
+    from web.app import render
+    return render(request, "radar_feed.html", feed_url=f"{_feed_base(request)}/feed.xml", entries=feed_entries(request),
+                  days=RSS_DIGESTS)
 
 
 @router.get("/upgrade.json")
