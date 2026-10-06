@@ -47,7 +47,7 @@ def _files(case: Path) -> dict:
 
 def evaluate(cases_dir, live: bool = False) -> dict:
     tp = fp = fn = 0
-    usd, started, count = 0.0, time.monotonic(), 0
+    usd, started, count, failures = 0.0, time.monotonic(), 0, 0
     cfg = load_config()
     for case in sorted(Path(cases_dir).iterdir()):
         if not case.is_dir():
@@ -69,9 +69,10 @@ def evaluate(cases_dir, live: bool = False) -> dict:
         found = {(f["evidence"][0]["path"], f["evidence"][0]["line"]) for f in state.get("verified") or [] if f["verified"]}
         tp += len(found & truth); fp += len(found - truth); fn += len(truth - found)
         usd += sum(spent)
+        failures += gateway.failures
     precision = tp / (tp + fp) if tp + fp else 1.0
     recall = tp / (tp + fn) if tp + fn else 1.0
-    return {"precision": round(precision, 3), "recall": round(recall, 3), "cases": count, "usd": round(usd, 4),
+    return {"precision": round(precision, 3), "recall": round(recall, 3), "cases": count, "usd": round(usd, 4), "model_failures": failures,
             "seconds": round(time.monotonic() - started, 1)}
 
 

@@ -122,6 +122,7 @@ def backfill_api_surface(conn, fetcher, sources, now: float, max_downloads: int 
         if not (source.api and source.package):
             continue
         ecosystem, _, name = source.package.partition(":")
+        failed = []
         try:
             infos = fetcher.versions(ecosystem, name)
             by_version = {i["version"]: i for i in infos}
@@ -131,7 +132,11 @@ def backfill_api_surface(conn, fetcher, sources, now: float, max_downloads: int 
                 if budget <= 0:
                     break
                 budget -= 1
-                snap = _surface(fetcher, ecosystem, name, by_version[version], source.module)
+                try:
+                    snap = _surface(fetcher, ecosystem, name, by_version[version], source.module)
+                except (SourceError, ArchiveError, ValueError):      # an old release with a different layout: skip it, keep going
+                    failed.append(version)
+                    continue
                 conn.execute("INSERT OR REPLACE INTO radar_api_snapshots(ecosystem, package, version, symbols, "
                              "created_at) VALUES (?, ?, ?, ?, ?)", (ecosystem, name, version, json.dumps(snap), now))
         except Exception as exc:
@@ -139,5 +144,5 @@ def backfill_api_surface(conn, fetcher, sources, now: float, max_downloads: int 
                 log.exception("api backfill crashed for %s", source.package)
             report[source.package] = f"error: {exc}"
         else:
-            report[source.package] = "ok"
+            report[source.package] = "ok" + (f" (skipped {', '.join(failed)})" if failed else "")
     return report

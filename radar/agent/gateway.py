@@ -54,6 +54,7 @@ class Gateway:
     def __init__(self, models_by_role, factory, prices, budget: Budget, on_usage, day_guard):
         self.models_by_role, self.factory, self.prices = models_by_role, factory, prices
         self.budget, self.on_usage, self.day_guard = budget, on_usage, day_guard
+        self.failures = 0                       # calls where every model failed (bad key, no credit, provider down)
 
     def _cost(self, model: str, msg) -> tuple[float, int]:
         usage = getattr(msg, "usage_metadata", None) or {}
@@ -82,4 +83,5 @@ class Gateway:
             provider = str((getattr(msg, "response_metadata", None) or {}).get("model_provider") or "openrouter")
             self.on_usage(name, provider, usd, tokens)
             return msg
+        self.failures += 1
         raise RuntimeError(f"all models failed for {role}: {type(last_error).__name__}")   # never echo provider text (may carry request details)

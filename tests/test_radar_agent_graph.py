@@ -162,3 +162,11 @@ def test_every_tool_call_gets_an_answer_and_calls_per_candidate_are_capped():
             assert tc["id"] in answered, tc["id"]
     ran = [m for m in fast.calls[-1] if isinstance(m, ToolMessage) and "limit" in m.content]
     assert ran                                                   # calls past the per-candidate cap were refused, not run
+
+
+def test_model_service_failures_are_stated_in_the_result_notes():
+    events = []
+    c = ctx({"s": _plan_then_nothing(), "f": [RuntimeError("401 unauthorized")]}, events)
+    run_graph(c, "down")
+    result = next(p for t, p in events if t == "result")
+    assert any("model service" in n for n in result["notes"])

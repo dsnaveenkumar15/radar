@@ -192,6 +192,9 @@ def build_graph(ctx: Context, checkpointer=None):
                                            (ctx.upgrade.get("packages") or {}).get(g["package"], {}))
                  for g in state.get("grounding") or [] if g["status"] == "outdated"]
         notes = (state.get("notes") or []) + [g["note"] for g in state.get("grounding") or [] if g.get("note")]
+        if ctx.gateway.failures:
+            notes.append(f"The model service failed {ctx.gateway.failures} time(s) (unreachable, out of credit or rejected the "
+                         "request), so parts of this check did not run.")
         not_done = len(state.get("candidates") or []) - len(state.get("findings") or [])
         note = state.get("budget_note", "")
         if not_done > 0:

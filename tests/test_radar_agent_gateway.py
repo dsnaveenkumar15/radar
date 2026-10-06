@@ -72,3 +72,10 @@ def test_unknown_cost_is_charged_a_conservative_default_so_the_daily_cap_cannot_
 def test_enabled_requires_at_least_one_model():
     assert not load_config({"AGENT_ENABLED": "1", "OPENROUTER_API_KEY": "k"}).enabled
     assert load_config({"AGENT_ENABLED": "1", "OPENROUTER_API_KEY": "k", "AGENT_FAST_MODELS": "a"}).enabled
+
+
+def test_total_failures_are_counted_so_callers_can_say_the_model_service_is_down():
+    g, _ = gw({"m1": [RuntimeError("401")], "m2": [RuntimeError("401")]})
+    with pytest.raises(RuntimeError):
+        g.invoke(["hi"])
+    assert g.failures == 1
