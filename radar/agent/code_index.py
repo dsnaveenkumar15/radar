@@ -3,13 +3,14 @@ import ast
 import re
 
 
-def module_roots(sources) -> dict[str, str]:
-    roots = {}
+def module_roots(sources) -> dict[str, dict[str, str]]:
+    """Import root -> package key, one map per ecosystem: `openai` is both a PyPI module and an npm package."""
+    roots: dict[str, dict[str, str]] = {"pypi": {}, "npm": {}}
     for s in sources:
         if not (s.api and s.package):
             continue
         ecosystem, _, name = s.package.partition(":")
-        roots[(s.module or name.replace("-", "_")) if ecosystem == "pypi" else name] = s.package
+        roots.setdefault(ecosystem, {})[(s.module or name.replace("-", "_")) if ecosystem == "pypi" else name] = s.package
     return roots
 
 
@@ -91,6 +92,15 @@ def _is_or_extends(use: list[str], defined: list[str]) -> bool:
     return any(_same_symbol(use[:k], defined) for k in range(1, len(use) + 1))
 
 
+def _member_line(text: str, leaf: str) -> tuple[int, str] | None:
+    """First line that accesses `.leaf` (leaf is already regex-escaped)."""
+    pattern = re.compile(r"\." + leaf + r"\b")
+    for n, line in enumerate(text.splitlines(), 1):
+        if pattern.search(line):
+            return n, line.strip()[:300]
+    return None
+
+
 def candidates(changes: list[dict], usages: list[dict], files: dict[str, str]) -> list[dict]:
     out = []
     for change in changes:
@@ -103,8 +113,9 @@ def candidates(changes: list[dict], usages: list[dict], files: dict[str, str]) -
             used = u["symbol"].split(".")
             if _is_or_extends(used, target):
                 strength = "exact"
-            elif parent and _is_or_extends(used, parent) and re.search(r"\." + leaf + r"\b", files.get(u["path"], "")):
+            elif parent and _is_or_extends(used, parent) and (member := _member_line(files.get(u["path"], ""), leaf)):
                 strength = "possible"        # a member of something the file uses, reached through an instance
+                u = {**u, "line": member[0], "text": member[1]}         # point at the line that uses the member
             else:
                 continue
             risk = 1 if change["kind"] == "deprecation" else (3 if strength == "exact" else 2)
@@ -118,7 +129,11 @@ def candidates(changes: list[dict], usages: list[dict], files: dict[str, str]) -
             unique.setdefault(key + (c["usage"]["line"],), c)
         elif key not in exact:
             unique.setdefault(key, c)
-    ranked = sorted(unique.values(), key=lambda c: (-c["risk"], c["usage"]["path"], c["usage"]["line"]))
+    # Radar lists a symbol under its defining module and under its public name; both on one line are one change.
+    one_per_line: dict[tuple, dict] = {}
+    for c in sorted(unique.values(), key=lambda c: (c["strength"] != "exact", len(c["change"]["symbol"].split(".")), c["change"]["symbol"])):
+        one_per_line.setdefault((c["usage"]["path"], c["usage"]["line"], c["change"]["symbol"].rsplit(".", 1)[-1], c["change"]["kind"]), c)
+    ranked = sorted(one_per_line.values(), key=lambda c: (-c["risk"], c["usage"]["path"], c["usage"]["line"]))
     for i, c in enumerate(ranked, 1):
         c["id"] = f"c{i}"
     return ranked

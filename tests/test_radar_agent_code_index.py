@@ -18,7 +18,16 @@ t.partial(a=1)
 def test_module_roots_from_sources():
     srcs = [Source(id="a", type="t", tier="o", package="pypi:llama-index-core", module="llama_index.core", api=True),
             Source(id="b", type="t", tier="o", package="npm:openai", api=True)]
-    assert module_roots(srcs) == {"llama_index.core": "pypi:llama-index-core", "openai": "npm:openai"}
+    assert module_roots(srcs) == {"pypi": {"llama_index.core": "pypi:llama-index-core"}, "npm": {"openai": "npm:openai"}}
+
+
+def test_a_name_shared_by_a_pypi_module_and_an_npm_package_keeps_both():
+    srcs = [Source(id="a", type="t", tier="o", package="pypi:openai", module="openai", api=True),
+            Source(id="b", type="t", tier="o", package="npm:openai", api=True)]
+    roots = module_roots(srcs)
+    assert roots["pypi"] == {"openai": "pypi:openai"} and roots["npm"] == {"openai": "npm:openai"}
+    py = index_python({"a.py": "from openai import OpenAI\nc = OpenAI()\n"}, roots["pypi"])
+    assert [u["package"] for u in py] == ["pypi:openai"]
 
 
 def test_python_usages_resolve_aliases_and_ignore_comments_and_strings():
@@ -91,7 +100,7 @@ def test_one_candidate_per_change_and_file_and_exact_beats_possible():
         ("x.fine", 2, "exact"), ("x.other", 3, "exact")]
     only_sibling = candidates([mk("x.later")], index_python({"a.py": "import x\nx.fine()\n# note\nz = y.later\n"}, {"x": "pypi:x"}),
                               {"a.py": "import x\nx.fine()\n# note\nz = y.later\n"})
-    assert [(c["strength"], c["usage"]["line"]) for c in only_sibling] == [("possible", 2)]       # one, not one per sibling line
+    assert [(c["strength"], c["usage"]["line"]) for c in only_sibling] == [("possible", 4)]       # one, at the line that uses the member
 
 
 LC = "from langchain_core.prompts import ChatPromptTemplate\nt = ChatPromptTemplate.from_messages([])\nu = ChatPromptTemplate\nv = ChatPromptTemplate()\n"
@@ -120,3 +129,21 @@ def test_pathological_python_files_are_skipped_not_fatal():
     deep = "import x\ny = x" + ".b" * 100_000 + "\n"
     assert index_python({"deep.py": deep, "ok.py": "import x\nx.f()\n"}, {"x": "pypi:x"}) == [
         {"path": "ok.py", "line": 2, "symbol": "x.f", "package": "pypi:x", "text": "x.f()"}]
+
+
+def _mk(symbol, kind="breaking"):
+    return {"package": "pypi:x", "symbol": symbol, "kind": kind, "change": "removed", "detail": "d", "from": "1", "to": "2"}
+
+
+def test_the_same_change_under_its_defining_and_public_name_is_one_candidate():
+    code = "from x import Client\nc = Client()\n"
+    usages = index_python({"a.py": code}, {"x": "pypi:x"})
+    cands = candidates([_mk("x.models.client.Client"), _mk("x.Client")], usages, {"a.py": code})
+    assert [c["change"]["symbol"] for c in cands] == ["x.Client"]            # the public name, listed once
+
+
+def test_a_possible_candidate_points_at_the_line_that_uses_the_member():
+    code = "from x import Client\nc = Client()\nprint('x')\nc.send_old('hi')\n"
+    usages = index_python({"a.py": code}, {"x": "pypi:x"})
+    [cand] = candidates([_mk("x.Client.send_old")], usages, {"a.py": code})
+    assert cand["strength"] == "possible" and cand["usage"]["line"] == 4 and "send_old" in cand["usage"]["text"]

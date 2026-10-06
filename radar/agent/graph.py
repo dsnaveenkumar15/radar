@@ -96,7 +96,8 @@ def build_graph(ctx: Context, checkpointer=None):
 
     def index_code(state):
         files = state["inputs"]["files"]
-        usages = code_index.index_python(files, ctx.roots) + code_index.index_typescript(files, ctx.roots)
+        usages = (code_index.index_python(files, ctx.roots.get("pypi", {}))
+                  + code_index.index_typescript(files, ctx.roots.get("npm", {})))
         changes = [c for g in state["grounding"] for c in g["changes"]]
         cands = code_index.candidates(changes, usages, files)
         for c in cands:

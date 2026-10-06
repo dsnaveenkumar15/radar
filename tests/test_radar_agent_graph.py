@@ -24,7 +24,7 @@ def ctx(script, events, budget=None):
     g = Gateway({"fast": ["f"], "strong": ["s"]}, scripted_factory(script), {"f": (1, 1), "s": (1, 1)},
                 budget or Budget(0.05, 60_000, 30, time.monotonic() + 120), on_usage=lambda *a: None, day_guard=lambda: None)
     return Context(load_input=lambda: {"mode": "repo", "repo": "o/r", "sha": "a" * 40, "files": FILES, "skipped": [], "truncated": False},
-                   api_changes=API, upgrade=UP, roots={"x": "pypi:x"}, gateway=g, emit=lambda t, p: events.append((t, p)))
+                   api_changes=API, upgrade=UP, roots={"pypi": {"x": "pypi:x"}, "npm": {}}, gateway=g, emit=lambda t, p: events.append((t, p)))
 
 
 def test_full_run_confirms_verifies_and_reports():

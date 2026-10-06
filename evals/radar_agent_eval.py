@@ -62,7 +62,7 @@ def evaluate(cases_dir, live: bool = False) -> dict:
         gateway = Gateway({"fast": cfg.fast_models or ["scripted"], "strong": cfg.strong_models or ["scripted"]}, factory,
                           cfg.prices, Budget(0.05, 60_000, 30, time.monotonic() + 120),
                           on_usage=lambda m, p, u, t: spent.append(u), day_guard=lambda: None)
-        roots = {"x": "pypi:x", "xpkg": "npm:xpkg"}
+        roots = {"pypi": {"x": "pypi:x"}, "npm": {"xpkg": "npm:xpkg"}}
         ctx = Context(load_input=lambda f=files: {"mode": "repo", "repo": case.name, "sha": None, "files": f, "skipped": [], "truncated": False},
                       api_changes=api, upgrade={"packages": {}}, roots=roots, gateway=gateway, emit=lambda t, p: None)
         state = run_graph(ctx, case.name)
