@@ -39,6 +39,7 @@ class AgentConfig:
     concurrent: int = 2
     queue: int = 3
     free_calls_day: int = 0                                     # 0 = no daily cap on free-model calls
+    strong_effort: str = ""                                     # reasoning effort for strong (review) models; "" = the model's default
 
 
 def load_agent_config(prefix: str, env=os.environ, **defaults) -> AgentConfig:
@@ -50,6 +51,7 @@ def load_agent_config(prefix: str, env=os.environ, **defaults) -> AgentConfig:
     cfg.strong_models = env_list(get("STRONG_MODELS"))
     cfg.public_models = env_list(get("PUBLIC_MODELS"))
     cfg.prices = env_prices(get("PRICES"))
+    cfg.strong_effort = get("STRONG_EFFORT", cfg.strong_effort)
     for name, cast in (("DAILY_USD", float), ("RUN_USD", float), ("FREE_CALLS_DAY", int)):
         if get(name):
             setattr(cfg, name.lower(), cast(get(name)))

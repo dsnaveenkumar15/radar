@@ -20,3 +20,13 @@ def test_off_without_a_key_or_a_fast_model():
 def test_prices_parse_model_ids_with_colons():
     cfg = load_agent_config("ARCHITECT_", {"ARCHITECT_PRICES": "free/x:free=0/0;a/b=0.2/1.1"})
     assert cfg.prices == {"free/x:free": (0.0, 0.0), "a/b": (0.2, 1.1)}
+
+
+def test_a_strong_model_can_be_asked_to_think_less_and_only_the_strong_ones():
+    from core.agent.gateway import chat_factory
+    cfg = load_agent_config("ARCHITECT_", {"OPENROUTER_API_KEY": "k", "ARCHITECT_ENABLED": "1", "ARCHITECT_FAST_MODELS": "fast/a",
+                                           "ARCHITECT_STRONG_MODELS": "strong/b", "ARCHITECT_STRONG_EFFORT": "low"})
+    make = chat_factory(cfg)
+    assert make("strong/b").extra_body["reasoning"] == {"effort": "low"}
+    assert "reasoning" not in make("fast/a").extra_body
+    assert "reasoning" not in chat_factory(load_agent_config("AGENT_", {"OPENROUTER_API_KEY": "k", "AGENT_STRONG_MODELS": "strong/b"}))("strong/b").extra_body
