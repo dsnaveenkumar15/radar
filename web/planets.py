@@ -34,7 +34,7 @@ PLANETS = {
         "lede": "Reference architectures for AI agents. Each one passes a linter, comes with a monthly cost "
                 "estimate and is updated when the tools it relies on change.",
         "action": ("Find one for my case", "/finder"), "second": ("Draft a custom one", "/custom"),
-        "theme": {"default": "light", "css": "/static/themes/blueprints/theme.css?v=7", "mark": "/static/themes/blueprints/mark.svg",
+        "theme": {"default": "light", "css": "/static/themes/blueprints/theme.css?v=9", "mark": "/static/themes/blueprints/mark.svg",
                   "preload": ["/static/themes/blueprints/fonts/manrope-latin.woff2"]},
         "steps": [("Describe your case", "Answer a few questions about the task, its risk and its volume."),
                   ("Get matching blueprints", "Each shows its topology, required controls, failure modes and cost "

@@ -1,16 +1,16 @@
 # web/radar_agent.py
 """Upgrade agent pages and API. Runs execute on background threads (radar.agent.runs.Runner); the browser follows a
 run over a same-origin server-sent-events stream that reads the event log, so a reload resumes where it left off."""
-import asyncio
 import hashlib
 import json
 import re
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
+from core.agent.stream import follow, response as stream_response
 from core.db import connect
 from radar.agent import inputs, runs
 from web.radar_site import radar_only
@@ -81,36 +81,10 @@ def _run_or_404(conn, run_id: str) -> dict:
     return run
 
 
-def _sse(e: dict) -> str:
-    return f"id: {e['id']}\ndata: {json.dumps({'type': e['type'], 'payload': e['payload']})}\n\n"
-
-
-def _poll(db_path: str, run_id: str, last: int) -> tuple[list[dict], str]:
-    """One short database read; the connection never outlives it."""
-    c = connect(db_path)
-    try:
-        return runs.events(c, run_id, after=last), runs.status_of(c, run_id)
-    finally:
-        c.close()
-
-
 async def event_generator(db_path: str, run_id: str, last: int):
-    """Follow a run. Waiting happens on the event loop (a thread is used only for each quick read), so idle streams
-    cost no worker threads. After STREAM_SECONDS the stream closes WITHOUT an end event: the browser reconnects and
-    resumes from the last event id."""
-    deadline = time.monotonic() + STREAM_SECONDS
-    while time.monotonic() < deadline:
-        events, status = await asyncio.to_thread(_poll, db_path, run_id, last)
-        for e in events:
-            last = e["id"]
-            yield _sse(e)
-        if status not in ("queued", "running"):
-            tail, _ = await asyncio.to_thread(_poll, db_path, run_id, last)      # events written just before it finished
-            for e in tail:
-                yield _sse(e)
-            yield "event: end\ndata: {}\n\n"
-            return
-        await asyncio.sleep(0.4)
+    """Follow a run (shared implementation in core.agent.stream)."""
+    async for chunk in follow(db_path, runs.STORE, run_id, last, STREAM_SECONDS):
+        yield chunk
 
 
 @router.get("/api/agent/runs/{run_id}/events")
@@ -124,8 +98,7 @@ async def stream(run_id: str, request: Request, after: int = 0):
         conn.close()
     header = request.headers.get("last-event-id", "")
     last = max(after, int(header)) if header.isdigit() else after
-    return StreamingResponse(event_generator(db_path, run_id, last), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Robots-Tag": "noindex", "X-Accel-Buffering": "no"})
+    return stream_response(event_generator(db_path, run_id, last))
 
 
 @router.get("/api/agent/runs/{run_id}/all")
