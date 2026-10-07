@@ -3,10 +3,24 @@
 import json
 import math
 import sqlite3
+from datetime import datetime, timezone
 
 GLYPHS = {"breaking": ("▲", "Break"), "notable": ("◆", "Notable")}
 MINOR = ("○", "Minor")
 LEVEL_RADIUS = {"break": 0.38, "cve": 0.64, "ok": 0.88}     # nearer the centre = more urgent
+
+
+LIVE_DAYS = 2                      # a digest is written nightly: up to two days old still counts as live
+
+
+def freshness(date: str, now: float) -> dict:
+    """Whether the newest digest is recent enough to call the page live, and how many days old it is."""
+    try:
+        published = datetime.strptime(str(date), "%Y-%m-%d").replace(tzinfo=timezone.utc).date()
+    except ValueError:
+        return {"live": False, "days": None}
+    days = (datetime.fromtimestamp(now, timezone.utc).date() - published).days
+    return {"live": days <= LIVE_DAYS, "days": max(days, 0)}
 
 
 def ticker(digest: dict, limit: int = 6) -> list[dict]:

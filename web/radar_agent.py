@@ -1,7 +1,6 @@
 # web/radar_agent.py
 """Upgrade agent pages and API. Runs execute on background threads (radar.agent.runs.Runner); the browser follows a
 run over a same-origin server-sent-events stream that reads the event log, so a reload resumes where it left off."""
-import hashlib
 import json
 import re
 import time
@@ -36,8 +35,8 @@ def _db(request: Request):
         conn.close()
 
 
-def _ip_hash(request: Request) -> str:
-    return hashlib.sha256(client_ip(request, request.app.state.settings.trust_proxy).encode()).hexdigest()[:32]
+def _ip_hash(request: Request, conn) -> str:
+    return runs.STORE.visitor_hash(conn, client_ip(request, request.app.state.settings.trust_proxy))
 
 
 @router.get("/agent", response_class=HTMLResponse)
@@ -65,7 +64,7 @@ def start_run(request: Request, body: StartRun, conn=Depends(_db)):
         else:
             raise inputs.InputError("Enter a GitHub repository URL or paste a dependency file.")
         runs.expire(conn, now)                     # the 30-day retention holds without waiting for a restart
-        rid = runs.create_checked(conn, request.app.state.agent_config, payload, mode, _ip_hash(request), now)
+        rid = runs.create_checked(conn, request.app.state.agent_config, payload, mode, _ip_hash(request, conn), now)
     except inputs.InputError as exc:
         raise HTTPException(400, str(exc))
     except runs.LimitError as exc:

@@ -90,3 +90,26 @@ def test_runner_stores_the_status_the_work_returns(tmp_path):
         time.sleep(0.05)
     run = s.get_run(c, rid)
     assert run["status"] == "passed" and run["result"] == {"ok": 1} and [e["type"] for e in s.events(c, rid)] == ["info"]
+
+
+def test_visitor_hashes_are_salted_per_install_stable_and_not_a_plain_hash_of_the_address(conn):
+    import hashlib
+    s = RunStore("architect", 7)
+    s.ensure_schema(conn)
+    first = s.visitor_hash(conn, "203.0.113.7")
+    assert first == s.visitor_hash(conn, "203.0.113.7") and first != s.visitor_hash(conn, "203.0.113.8")
+    assert first != hashlib.sha256(b"203.0.113.7").hexdigest()[:32] and len(first) == 32
+    other = connect(":memory:")
+    s.ensure_schema(other)
+    assert s.visitor_hash(other, "203.0.113.7") != first                 # another install has another salt
+
+
+def test_the_salt_survives_a_reconnect(tmp_path):
+    path = str(tmp_path / "salt.db")
+    s = RunStore("agent", 30)
+    c = connect(path)
+    s.ensure_schema(c)
+    one = s.visitor_hash(c, "198.51.100.1")
+    c.close()
+    c2 = connect(path)
+    assert s.visitor_hash(c2, "198.51.100.1") == one

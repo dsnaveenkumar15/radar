@@ -5,12 +5,12 @@
 <section class="radar-hero" aria-labelledby="hero-title">
   <h1 id="hero-title">{{ meta.headline }}</h1>
   <p>{{ meta.lede }}</p>
-  <p class="live">&#9679; Live{% if dash.packages %} · {{ dash.packages | length }} packages tracked{% endif %} · digest {{ d.date }}</p>
+  <p class="live">{% if dash.fresh.live %}&#9679; Live{% elif dash.fresh.days is not none %}Last digest {{ dash.fresh.days }} day{{ "s" if dash.fresh.days != 1 }} ago{% else %}Digest date unknown{% endif %}{% if dash.packages %} · {{ dash.packages | length }} packages tracked{% endif %} · digest {{ d.date }}</p>
 </section>
 <div class="dash">
   <section class="cell cell-digest" aria-labelledby="h-digest">
     <h2 class="cell-h" id="h-digest"><svg class="ic" aria-hidden="true"><use href="/static/themes/radar/icons.svg#i-digest"/></svg>Today's digest · {{ d.date }}<a href="#digest">Full digest</a></h2>
-    {% for t in dash.ticker %}<p class="tick"><span class="sig sig-{{ t.impact }}">{{ t.glyph }} {{ t.label }}</span><a href="#{{ t.id }}">{{ t.title }}</a></p>
+    {% for t in dash.ticker %}<p class="tick"><span class="sig sig-{{ t.impact }}">{{ t.glyph }} {{ t.label }}</span><a href="#{{ t.id }}" title="{{ t.title }}">{{ t.title }}</a></p>
     {% else %}<p class="muted">Nothing cleared the bar this night.</p>{% endfor %}
   </section>
   {% if dash.sweep %}

@@ -79,3 +79,13 @@ def test_an_uncreatable_database_path_means_no_runs(tmp_path):
     blocker = tmp_path / "file"
     blocker.write_text("x")
     assert dash.recorded_runs(str(blocker / "sub" / "a.db")) == []
+
+
+def test_a_digest_is_live_for_two_days_then_the_page_says_how_old_it_is():
+    from datetime import datetime, timezone
+    now = datetime(2026, 10, 7, 12, 0, tzinfo=timezone.utc).timestamp()
+    assert dash.freshness("2026-10-07", now) == {"live": True, "days": 0}
+    assert dash.freshness("2026-10-05", now) == {"live": True, "days": 2}
+    assert dash.freshness("2026-10-04", now) == {"live": False, "days": 3}
+    assert dash.freshness("not-a-date", now) == {"live": False, "days": None}
+    assert dash.freshness("2026-10-09", now)["live"] is True              # a clock a day behind never makes it look stale

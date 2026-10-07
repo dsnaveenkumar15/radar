@@ -1,6 +1,7 @@
 # core/agent/runs.py
 """Agent runs and their event log in SQLite, one table set per app (prefix), and the background runner. The live
 trace, run pages, limits and the daily spend all read from here."""
+import hashlib
 import json
 import re
 import secrets
@@ -155,6 +156,15 @@ class RunStore:
     def is_enabled(self, conn) -> bool:
         r = conn.execute(f"SELECT value FROM {self.p}_settings WHERE key='enabled'").fetchone()
         return r is None or r["value"] == "1"
+
+    def visitor_hash(self, conn, ip: str) -> str:
+        """A stable key for one visitor's address: SHA-256 of a random per-install salt and the address, so the key is
+        not a plain hash of the IP. The salt lives in this store's settings table; it is made on first use."""
+        row = conn.execute(f"SELECT value FROM {self.p}_settings WHERE key='ip_salt'").fetchone()
+        if row is None:
+            conn.execute(f"INSERT OR IGNORE INTO {self.p}_settings(key, value) VALUES ('ip_salt', ?)", (secrets.token_hex(16),))
+            row = conn.execute(f"SELECT value FROM {self.p}_settings WHERE key='ip_salt'").fetchone()
+        return hashlib.sha256((row["value"] + "|" + ip).encode()).hexdigest()[:32]
 
     def calls_today(self, conn, now: float, models: list[str]) -> int:
         if not models:

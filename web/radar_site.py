@@ -163,7 +163,8 @@ def home(request: Request):
         return render(request, "radar_empty.html")
     context = _digest_context(request, latest, True)
     rows = radar_dashboard.packages(data.upgrade())
-    dash = {"ticker": radar_dashboard.ticker(context["d"]), "packages": rows, "sweep": radar_dashboard.sweep(rows),
+    dash = {"ticker": radar_dashboard.ticker(context["d"]), "packages": rows,
+            "fresh": radar_dashboard.freshness(context["d"].get("date", ""), time.time()), "sweep": radar_dashboard.sweep(rows),
             "activity": radar_dashboard.activity(data.index()),
             "runs": radar_dashboard.recorded_runs(request.app.state.settings.db_path)}
     return render(request, "radar_home.html", dash=dash, **context)

@@ -87,7 +87,7 @@
 .cell p { max-width: none; }
 .tick { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; margin: 0; padding: 9px 0; border-bottom: 1px dashed var(--rule); font-size: 13.5px; }
 .tick:last-of-type { border-bottom: 0; }
-.tick a { color: var(--ink); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tick a { color: var(--ink); text-decoration: none; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; }
 .tick a:hover { color: var(--accent); text-decoration: none; }
 .sig { font: 600 11.5px/1.6 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
 .sig-breaking { color: var(--sig-break); } .sig-notable { color: var(--sig-depr); } .sig-minor { color: var(--muted); } .sig-ok { color: var(--sig-cve); }
