@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -38,7 +40,7 @@ def test_dashboard_works_before_any_radar_table_exists(c):
 
 def test_dashboard_shows_failing_sources_and_the_latest_digest(c, db):
     store.record_source(db, "gh-x", "official", "collector", False, "boom " + EVIL, NOW)
-    store.record_source(db, "hn", "community", "collector", True, None, NOW)
+    store.record_source(db, "hn", "community", "collector", True, None, time.time())   # the dashboard judges health against the real clock
     db.execute("INSERT INTO radar_digests(date, status, synthesis, release_id, created_at) VALUES "
                "('2026-10-02', 'partial', 'unsynthesized', 'r1', 1.0)")
     html = c.get("/admin", auth=AUTH).text

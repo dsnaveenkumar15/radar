@@ -10,7 +10,9 @@ PACKS = sorted(p.name for p in THEMES.iterdir() if (p / "theme.css").is_file()) 
 COLOURS = ["bg", "surface", "surface-2", "ink", "ink-2", "muted", "rule", "rule-2", "field", "accent", "accent-ink",
            "accent-soft", "ok", "ok-soft", "warn", "warn-soft", "bad", "bad-soft", "mark"]
 MODE_FREE = ["sans", "mono", "display", "r-sm", "r-md", "r-lg", "shadow-1", "shadow-2"]
-EXTRA = {"radar": ["sig-break", "sig-depr", "sig-cve", "grid"]}
+EXTRA = {"radar": ["sig-break", "sig-depr", "sig-cve", "grid"],
+         "trust": ["sev-critical", "sev-high", "sev-medium", "sev-low", "sev-high-soft"],
+         "blueprints": ["port", "dot"]}
 TEXT_ON = ["ink", "ink-2", "muted", "accent", "ok", "warn", "bad"]          # read as text on bg and surface
 
 
@@ -49,7 +51,7 @@ def test_every_pack_defines_the_whole_token_contract_in_both_modes(app):
 @pytest.mark.parametrize("app", PACKS)
 def test_text_meets_wcag_aa_in_both_modes(app):
     for mode in blocks(app):
-        for token in TEXT_ON + [t for t in EXTRA.get(app, []) if t.startswith("sig-")]:
+        for token in TEXT_ON + [t for t in EXTRA.get(app, []) if t.startswith(("sig-", "sev-")) and not t.endswith("-soft")]:
             for ground in ("bg", "surface"):
                 ratio = contrast(mode[token], mode[ground])
                 assert ratio >= 4.5, f"{app}: --{token} on --{ground} is {ratio:.2f}:1"
@@ -68,8 +70,25 @@ def test_pack_stays_within_its_budgets(app):
     assert not re.search(r"url\((?!\"?/static/)", css), "assets must be self-hosted under /static"
 
 
+@pytest.mark.skipif(not (THEMES / "radar").is_dir(), reason="no Radar pack in this repository")
 def test_new_digest_entries_keep_muted_text_readable():
     # --accent-soft behind --muted text measured 4.0-4.5:1 (below AA); new entries are marked by their badge instead.
     css = (THEMES / "radar" / "theme.css").read_text(encoding="utf-8")
     rule = re.search(r"\.planet-radar \.cluster\.is-new\s*\{([^}]*)\}", css).group(1)
     assert "accent-soft" not in rule
+
+
+@pytest.mark.skipif(not (THEMES / "trust").is_dir(), reason="no Trust pack in this repository")
+def test_trust_grade_badges_meet_aa_in_light_mode():
+    light, _ = blocks("trust")
+    for ink, ground in (("ok", "ok-soft"), ("sev-medium", "warn-soft"), ("sev-high", "sev-high-soft"), ("sev-critical", "bad-soft")):
+        ratio = contrast(light[ink], light[ground])
+        assert ratio >= 4.5, f"--{ink} on --{ground} is {ratio:.2f}:1"
+
+
+@pytest.mark.skipif(not (THEMES / "blueprints").is_dir(), reason="no Blueprints pack in this repository")
+def test_blueprints_chips_and_badges_meet_aa_in_light_mode():
+    light, _ = blocks("blueprints")
+    for ink, ground in (("accent", "accent-soft"), ("ok", "ok-soft"), ("bad", "bad-soft"), ("muted", "surface-2")):
+        ratio = contrast(light[ink], light[ground])
+        assert ratio >= 4.5, f"--{ink} on --{ground} is {ratio:.2f}:1"

@@ -5,6 +5,8 @@ PLANETS = {
         "lede": "Paste the tool list of an MCP server. Trust reads every description and shows hidden instructions, "
                 "shell access and credential reads, with the exact text that triggered each one.",
         "action": ("Check a server", "/check"), "second": ("How grades work", "/methodology"),
+        "theme": {"default": "dark", "css": "/static/themes/trust/theme.css?v=5", "mark": "/static/themes/trust/mark.svg",
+                  "preload": ["/static/themes/trust/fonts/ibm-plex-sans-latin.woff2"]},
         "steps": [("Paste the tool list", "Copy the JSON your server returns for tools/list."),
                   ("Every description is read", "Rules look for hidden instructions, tool shadowing, invisible "
                                                 "characters and risky capabilities."),
@@ -32,6 +34,8 @@ PLANETS = {
         "lede": "Reference architectures for AI agents. Each one passes a linter, comes with a monthly cost "
                 "estimate and is updated when the tools it relies on change.",
         "action": ("Find one for my case", "/finder"), "second": ("Draft a custom one", "/custom"),
+        "theme": {"default": "light", "css": "/static/themes/blueprints/theme.css?v=7", "mark": "/static/themes/blueprints/mark.svg",
+                  "preload": ["/static/themes/blueprints/fonts/manrope-latin.woff2"]},
         "steps": [("Describe your case", "Answer a few questions about the task, its risk and its volume."),
                   ("Get matching blueprints", "Each shows its topology, required controls, failure modes and cost "
                                               "per month."),
