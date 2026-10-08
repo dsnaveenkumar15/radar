@@ -14,7 +14,7 @@ from radar.agent.graph import Context
 
 def make_context_factory(app, settings):
     def make(conn, run_id, emit):
-        cfg = app.state.agent_config
+        cfg = runs.STORE.effective_config(conn, app.state.agent_config)     # the console's settings apply to this run
         run = runs.get_run(conn, run_id)
         data = app.state.radar_data
 
