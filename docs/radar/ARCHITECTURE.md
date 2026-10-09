@@ -133,15 +133,98 @@ Data: one SQLite database (WAL) in Radar's volume, backed up nightly by the serv
 
 ## 8. Operations
 
+Written in ASD-STE100 style (Simplified Technical English): one instruction in each step, active voice, short
+sentences. Do all the steps on the server, as root.
+
+### Procedure 1: Deploy a new version
+
+1. Go to the Radar folder:
+
+   ```bash
+   cd /opt/radar
+   ```
+
+2. Write down the current commit. You need it if you must go back (Procedure 2).
+
+   ```bash
+   git rev-parse --short HEAD
+   ```
+
+3. Get the new version:
+
+   ```bash
+   git pull
+   ```
+
+4. Build and start the app:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+5. Make sure that the web container is healthy. Do this command until it shows `healthy` (about 30 seconds).
+
+   ```bash
+   docker inspect -f '{{.State.Health.Status}}' radar-web-1
+   ```
+
+6. Make sure that the worker started without errors. The command must show `0`.
+
+   ```bash
+   docker logs --since 2m radar-batch-1 2>&1 | grep -c Traceback
+   ```
+
+   If the command shows more than `0`, read the log (`docker logs --since 2m radar-batch-1`). A missing package
+   usually means that `requirements.txt` was not made again after a dependency change.
+
+7. Make sure that the public site answers. The command must show `200`.
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' https://radar.naveenlabs.tech/healthz
+   ```
+
+8. Do this step only on the first deploy. Fill the API history. Do this command three times. Each time downloads more old versions.
+
+   ```bash
+   docker exec radar-batch-1 python -m radar.cli backfill
+   ```
+
+### Procedure 2: Go back to the previous version
+
+Use this procedure if Procedure 1 fails at step 5, 6 or 7.
+
+1. Go to the Radar folder (`cd /opt/radar`).
+2. Get the commit that you wrote down in Procedure 1, step 2:
+
+   ```bash
+   git checkout <commit>
+   ```
+
+3. Do Procedure 1, steps 4 to 7 again.
+
+### Procedure 3: Stop the upgrade agent immediately
+
+Use this procedure if the agent costs too much or gives bad results. The agent stops when any one of its switches is
+off. Runs that started before continue to their limits.
+
+1. Open `https://radar.naveenlabs.tech/admin` and log in.
+2. Push "Turn live runs off".
+3. Open `https://radar.naveenlabs.tech/agent`. Make sure that it shows "Live runs are paused".
+
+To keep the agent off after a restart, also set `AGENT_ENABLED=0` in `/opt/radar/.env`. Then do this command:
+
 ```bash
-cd /opt/radar && git pull && docker compose up -d --build
-docker inspect -f '{{.State.Health.Status}}' radar-web-1      # wait for "healthy"
-docker logs --since 2m radar-batch-1
-python -m radar.cli backfill                                   # in the batch container, first deploy: fill API history
+docker compose up -d --force-recreate web
 ```
 
-Rollback: `git checkout <previous commit>`, then `docker compose up -d --build`. Every setting is in `.env.example`.
-Shared code comes from the `atlas` monorepo (`CORE_VERSION`; `scripts/sync_core.py --check`).
+CAUTION: If the owner's control console has an override that sets `agent.enabled` to on, the `.env` value has no
+effect. The switch in `/admin` always works.
+
+To stop all paid work in Radar (agent and batch), set "stop all" in the control console.
+
+### Settings
+
+`.env.example` lists every setting. Shared code comes from the `atlas` monorepo (`CORE_VERSION`; `scripts/sync_core.py --check`).
 
 ## 9. Quality gates
 
