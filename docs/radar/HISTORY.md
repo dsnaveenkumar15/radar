@@ -22,6 +22,7 @@ detail.
 | 2026-10-07 | Agent runtime moved into the shared core (no behaviour change); salted visitor keys; "Live" label by digest age; ticker wraps on phones |
 | 2026-10-08 | Owner controls (agent switch and limits, batch cap, weekly brake, stop-all) and the private control interface; digest notes moved to OpenRouter with a daily cap; rate-limited calls retry in minutes; agent daily cap lowered to $0.25 |
 | 2026-10-09 | Own architecture and history documents |
+| 2026-10-11 | The private report lists recent runs and batch jobs (metadata only) for the console |
 
 ## Open items
 

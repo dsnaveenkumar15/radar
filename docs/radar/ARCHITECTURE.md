@@ -100,6 +100,9 @@ Stored in Radar's own database (`core/control/`): `agent.enabled`, `agent.daily_
 paid work past this % of the OpenRouter key's weekly limit, default 90); `global.stop_all`. The value in effect is the
 `.env` default unless overridden; every change is stored with a note. The owner's private console uses
 `/internal/control` (404 through the proxy, without the token, or when `CONTROL_TOKEN` is unset).
+Its report also lists the latest 20 agent runs and batch jobs as metadata only (when, mode, outcome, duration, cost,
+job type, a short error); never the visitor's input, their hashed address, the job payload or the run id, which is the
+private result link.
 
 ## 6. Security
 
