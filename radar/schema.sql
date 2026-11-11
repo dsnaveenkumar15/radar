@@ -54,6 +54,16 @@ CREATE TABLE IF NOT EXISTS radar_api_snapshots (
   PRIMARY KEY (ecosystem, package, version)
 );
 
+-- Old releases the backfill could not read (a different layout or a broken archive): not downloaded again.
+CREATE TABLE IF NOT EXISTS radar_api_unreadable (
+  ecosystem TEXT NOT NULL,
+  package TEXT NOT NULL,
+  version TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  created_at REAL NOT NULL,
+  PRIMARY KEY (ecosystem, package, version)
+);
+
 CREATE TABLE IF NOT EXISTS radar_api_diffs (
   ecosystem TEXT NOT NULL,
   package TEXT NOT NULL,

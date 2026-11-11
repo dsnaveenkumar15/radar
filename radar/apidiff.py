@@ -7,6 +7,11 @@ RENAME_RATIO = 0.6
 CONTAINERS = ("class", "interface", "enum", "namespace")
 _POSITIONAL = ("pos_only", "pos_or_kw")
 
+# Modules a package split into a sister package that it requires, so the old import path keeps working. Verified by hand:
+# langgraph>=0.3 requires langgraph-prebuilt, which ships langgraph/prebuilt/.
+# ponytail: hand-kept list, one line per known split; snapshot the sister package too if splits become common.
+MOVED = {"pypi:langgraph": {"langgraph.prebuilt": "langgraph-prebuilt"}}
+
 
 def _parent_leaf(name: str) -> tuple[str, str]:
     """("pkg.m", "f") for "pkg.m.f"; ("./client#Client", "connect") for "./client#Client.connect"."""
@@ -82,7 +87,15 @@ def _renames(removed: list[str], added: list[str], old: dict, new: dict) -> dict
     return pairs
 
 
-def diff_snapshots(old: dict, new: dict, limit: int | None = MAX_LIST, added_limit: int | None = MAX_ADDED) -> dict:
+def _moved_to(package: str, name: str) -> str | None:
+    for prefix, sister in MOVED.get(package, {}).items():
+        if name == prefix or name.startswith(prefix + "."):
+            return sister
+    return None
+
+
+def diff_snapshots(old: dict, new: dict, limit: int | None = MAX_LIST, added_limit: int | None = MAX_ADDED,
+                   package: str = "") -> dict:
     a, b = old["symbols"], new["symbols"]
     removed, added = sorted(set(a) - set(b)), sorted(set(b) - set(a))
     renames = _renames(removed, added, a, b)
@@ -90,6 +103,11 @@ def diff_snapshots(old: dict, new: dict, limit: int | None = MAX_LIST, added_lim
     changes = []
     for name in removed:
         if _parent_leaf(name)[0] in containers:
+            continue
+        sister = _moved_to(package, name)
+        if sister:
+            changes.append({"symbol": name, "change": "moved", "severity": "notable",
+                            "detail": f"moved to the {sister} package, which {package.partition(':')[2]} installs; the import still works"})
             continue
         to = renames.get(name)
         # A member that disappears from a class that still has base classes may simply be inherited now.

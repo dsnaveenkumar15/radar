@@ -21,7 +21,7 @@ def _package(conn, ecosystem: str, name: str, versions: list[str]) -> dict:
         "SELECT version, symbols FROM radar_api_snapshots WHERE ecosystem=? AND package=?", (ecosystem, name))}
     steps = []
     for old, new in zip(stable, stable[1:]):
-        diff = diff_snapshots(snaps[old], snaps[new], limit=None, added_limit=0)
+        diff = diff_snapshots(snaps[old], snaps[new], limit=None, added_limit=0, package=f"{ecosystem}:{name}")
         steps.append({"from": old, "to": new, "breaking": _rows(diff["breaking"]), "deprecations": _rows(diff["deprecations"])})
     latest = stable[-1] if stable else None
     return {"ecosystem": ecosystem, "name": name, "versions": stable, "latest": latest,

@@ -68,3 +68,41 @@ def test_one_unparseable_old_version_does_not_stop_the_rest_of_the_package(conn)
     stored = [r["version"] for r in conn.execute("SELECT version FROM radar_api_snapshots ORDER BY version")]
     assert stored == ["1.1.0", "1.2.0"]
     assert report["pypi:x"].startswith("ok") and "1.0.0" in report["pypi:x"]          # reported, not hidden
+
+
+def _layout_fetcher(error):
+    class Broken(FakeFetcher):
+        def files(self, ecosystem, name, info):
+            if info["version"] == "1.0.0":
+                self.downloads.append((name, info["version"]))
+                raise error
+            return super().files(ecosystem, name, info)
+
+    fetcher = Broken({"x": []}, {("x", "1.1.0"): V2, ("x", "1.2.0"): V3})
+    fetcher.versions = lambda eco, name: [info("1.0.0", 200), info("1.1.0", 100), info("1.2.0", 10)]
+    return fetcher
+
+
+def test_an_unreadable_old_release_is_downloaded_once_not_every_night(conn):
+    from radar import store
+    from radar.archive import ArchiveError
+    store.ensure_schema(conn)
+    src = Source(id="gh-x", type="github_releases", tier="official", repo="a/x", package="pypi:x", module="pkg", api=True)
+    for error in (ValueError("no public symbols found in x 1.0.0 (wrong module?)"), ArchiveError("not a wheel")):
+        conn.execute("DELETE FROM radar_api_snapshots")
+        conn.execute("DELETE FROM radar_api_unreadable")
+        fetcher = _layout_fetcher(error)
+        backfill_api_surface(conn, fetcher, [src], NOW)
+        backfill_api_surface(conn, fetcher, [src], NOW + DAY)
+        assert [d for d in fetcher.downloads if d[1] == "1.0.0"] == [("x", "1.0.0")], error
+
+
+def test_a_network_failure_is_tried_again_the_next_night(conn):
+    from radar import store
+    from radar.errors import SourceError
+    store.ensure_schema(conn)
+    src = Source(id="gh-x", type="github_releases", tier="official", repo="a/x", package="pypi:x", module="pkg", api=True)
+    fetcher = _layout_fetcher(SourceError("HTTP 503"))
+    backfill_api_surface(conn, fetcher, [src], NOW)
+    backfill_api_surface(conn, fetcher, [src], NOW + DAY)
+    assert [d for d in fetcher.downloads if d[1] == "1.0.0"] == [("x", "1.0.0")] * 2

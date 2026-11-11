@@ -41,7 +41,7 @@ def _diff_new_pairs(conn, package: str, ecosystem: str, name: str, tracked: list
         old, new = _load(conn, ecosystem, name, old_version), _load(conn, ecosystem, name, new_version)
         if old is None or new is None:
             continue
-        diff = diff_snapshots(old, new)
+        diff = diff_snapshots(old, new, package=package)
         with tx(conn):
             conn.execute("INSERT INTO radar_api_diffs(ecosystem, package, from_version, to_version, diff, created_at) "
                          "VALUES (?, ?, ?, ?, ?, ?)", (ecosystem, name, old_version, new_version, json.dumps(diff), now))
@@ -126,15 +126,22 @@ def backfill_api_surface(conn, fetcher, sources, now: float, max_downloads: int 
         try:
             infos = fetcher.versions(ecosystem, name)
             by_version = {i["version"]: i for i in infos}
+            unreadable = {r["version"] for r in conn.execute(
+                "SELECT version FROM radar_api_unreadable WHERE ecosystem=? AND package=?", (ecosystem, name))}
             for version in backfill_versions(ecosystem, infos, now):
-                if _load(conn, ecosystem, name, version) is not None:
+                if version in unreadable or _load(conn, ecosystem, name, version) is not None:
                     continue
                 if budget <= 0:
                     break
                 budget -= 1
                 try:
                     snap = _surface(fetcher, ecosystem, name, by_version[version], source.module)
-                except (SourceError, ArchiveError, ValueError):      # an old release with a different layout: skip it, keep going
+                except (ArchiveError, ValueError) as exc:          # an old release with a different layout: never again
+                    conn.execute("INSERT OR REPLACE INTO radar_api_unreadable(ecosystem, package, version, reason, created_at) "
+                                 "VALUES (?, ?, ?, ?, ?)", (ecosystem, name, version, str(exc)[:300], now))
+                    failed.append(version)
+                    continue
+                except SourceError:                                 # network or registry trouble: try again next time
                     failed.append(version)
                     continue
                 conn.execute("INSERT OR REPLACE INTO radar_api_snapshots(ecosystem, package, version, symbols, "

@@ -25,6 +25,22 @@ def test_steps_follow_version_order_and_carry_the_change_kind(conn):
     assert data["latest_symbols"] == ["x.a", "x.b"]
 
 
+def test_a_module_split_into_an_installed_sister_package_is_not_reported_as_removed(conn):
+    """langgraph 0.3 moved langgraph.prebuilt into langgraph-prebuilt, which langgraph requires: the imports still work."""
+    store.ensure_schema(conn)
+    for v, names in [("0.2.76", ["langgraph.graph.StateGraph", "langgraph.prebuilt.ToolNode", "langgraph.prebuilt.InjectedState",
+                                 "langgraph.gone"]),
+                     ("0.3.34", ["langgraph.graph.StateGraph"])]:
+        conn.execute("INSERT INTO radar_api_snapshots(ecosystem, package, version, symbols, created_at) "
+                     "VALUES ('pypi','langgraph',?,?,0)", (v, json.dumps(snap(names))))
+    step = api_changes(conn, 5.0)["packages"]["pypi:langgraph"]["steps"][0]
+    assert [r["symbol"] for r in step["breaking"]] == ["langgraph.gone"]            # a real removal still breaks
+    stored = diff_snapshots(snap(["langgraph.prebuilt.ToolNode"]), snap([]), package="pypi:langgraph")
+    assert stored["breaking"] == [] and stored["other"][0]["change"] == "moved"
+    assert "langgraph-prebuilt" in stored["other"][0]["detail"]
+    assert diff_snapshots(snap(["x.prebuilt.ToolNode"]), snap([]), package="pypi:x")["breaking"]   # only the known split
+
+
 def test_large_steps_are_not_truncated(conn):
     many = [f"x.f{i}" for i in range(150)]
     seed(conn, [("1.0.0", many + ["x.keep"]), ("2.0.0", ["x.keep"])])
