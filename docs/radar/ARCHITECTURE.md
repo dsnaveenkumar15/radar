@@ -1,7 +1,8 @@
 # Radar: architecture
 
 How Radar (`radar.naveenlabs.tech`) is built, secured and run. This document covers Radar only. What was built and
-when: [`HISTORY.md`](HISTORY.md).
+when: [`HISTORY.md`](HISTORY.md). A visual walkthrough for presenting: [`explainer.html`](explainer.html) (open it in a
+browser; the 3D views need an internet connection for three.js).
 
 Last reviewed: 2026-10-09.
 
@@ -231,11 +232,10 @@ To stop all paid work in Radar (agent and batch), set "stop all" in the control 
 
 ## 9. Quality gates
 
-- About 850 tests in CI on every push.
+- About 860 tests in CI on every push.
 - Diff evaluation (`python -m evals.radar_eval`); agent evaluation (`python -m evals.radar_agent_eval`: precision at
   least 0.9, recall at least 0.8 offline; `--live` with real models before a deploy).
 
 ## 10. Known limits
 
-- Static analysis flags `langgraph.prebuilt.*` as removed; it moved to a sister package.
 - Model-proposed patches are suggestions; check them against the listed API changes.

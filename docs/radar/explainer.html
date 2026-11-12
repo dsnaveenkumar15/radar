@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>How Radar is built (3D deck)</title>
+<meta name="description" content="Engineering deck for Radar: a release radar for AI libraries with API diffs from source, a nightly digest, and an upgrade agent whose findings code verifies." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 5 7v8c0 7 4.6 12.2 11 14 6.4-1.8 11-7 11-14V7L16 3Z' fill='%23F5A623'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  :root {
+    --accent: #f5a623; --accent-soft: #ffc766; --amber: #d29922; --amber-soft: #f2c14e; --red-soft: #f85149;
+    --blue-soft: #58a6ff; --purple-soft: #b392f0; --orange-soft: #f0883e; --grey: #8b98a5;
+    --bg: #0e0f0c; --panel: #14150f; --panel-2: #1c1d16; --border: #2c2d24;
+    --text: #e9e6da; --text-dim: #c9c5b6; --text-dimmer: #8c8878;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Fluid scale: every rem grows with the screen, so a large display shows larger content instead of empty space */
+  html { font-size: clamp(14px, 0.5vw + 0.95vh, 22px); }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', system-ui, sans-serif; font-weight: 300; letter-spacing: 0.01em; overflow: hidden; }
+  body { display: flex; flex-direction: column; padding: 1.1rem 1.4rem; gap: 0.85rem; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.7rem; border-bottom: 1px solid var(--border); }
+  header .brand { display: flex; align-items: center; gap: 0.55rem; font-weight: 700; letter-spacing: -0.01em; font-size: 1.2rem; }
+  header .brand svg { width: 22px; height: 22px; }
+  header .brand .em, .em { color: var(--accent); }
+  header .subtitle { color: var(--text-dim); font-size: 0.78rem; }
+
+  main { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+  .slide { position: absolute; inset: 0; overflow-y: auto; padding-right: 6px; display: none; flex-direction: column; gap: 0.85rem; }
+  .slide.active { display: flex; animation: fade .3s ease; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .slide.active { animation: none; } }
+  .slide::-webkit-scrollbar { width: 6px; }
+  .slide::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .slide-num { color: var(--text-dimmer); font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.06em; }
+  h1.slide-title { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.015em; color: var(--text); }
+  .slide-lead { color: var(--text-dim); font-size: 0.9rem; line-height: 1.55; max-width: 82ch; }
+  .slide-lead strong { color: var(--text); font-weight: 500; }
+  code.k, .mono { font-family: 'IBM Plex Mono', monospace; }
+  code.k { color: var(--blue-soft); font-size: 0.92em; }
+
+  .card { background: linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%); border: 1px solid var(--border); border-radius: 0.7rem; padding: 0.9rem 1.05rem; }
+  .card h3 { font-size: 0.8rem; color: var(--text); font-weight: 600; margin-bottom: 0.45rem; }
+  .card p, .card li { font-size: 0.85rem; line-height: 1.55; color: var(--text-dim); }
+  .card ul { padding-left: 1.1rem; }
+  .card p strong, .card li strong { color: var(--text); font-weight: 500; }
+  .card p + p { margin-top: 0.5rem; }
+  .card.green  { border-left: 3px solid var(--accent); }
+  .card.amber  { border-left: 3px solid var(--amber); }
+  .card.blue   { border-left: 3px solid var(--blue-soft); }
+  .card.red    { border-left: 3px solid var(--red-soft); }
+  .card.purple { border-left: 3px solid var(--purple-soft); }
+  .stack-col { display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; }
+
+  .example { padding: 0.65rem 0.85rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--text-dim); line-height: 1.62; white-space: pre-wrap; overflow-x: auto; }
+  .example b { color: var(--amber-soft); font-weight: 500; }
+  .example .out { color: var(--accent); }
+  .example .bad { color: var(--red-soft); }
+  .example .c { color: var(--text-dimmer); }
+  .example .kw { color: var(--purple-soft); }
+  .example mark { background: rgba(248,81,73,0.18); color: var(--red-soft); padding: 0 2px; border-radius: 3px; }
+  .ex-title { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--text-dimmer); margin-bottom: 0.3rem; }
+
+  .canvas-wrap { background: linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%); border: 1px solid var(--border); border-radius: 0.8rem; position: relative; overflow: hidden; min-height: 300px; }
+  .canvas-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
+  .canvas-hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); background: rgba(14,15,12,0.88); color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; padding: 0.3rem 0.65rem; border-radius: 0.3rem; border: 1px solid var(--border); pointer-events: none; z-index: 5; white-space: nowrap; }
+  /* 3D labels are real HTML text, so they are as sharp as the page */
+  .labels3d { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  /* name only; hover a label to read its detail line */
+  .lbl3d { transform: translateY(-50%); background: rgba(7,11,16,0.85); border: 1px solid var(--c); border-left: 2px solid var(--c);
+    border-radius: 3px; padding: 0 4px 1px; white-space: nowrap; line-height: 1.2; text-align: left; pointer-events: auto; cursor: default; }
+  .lbl3d b { display: block; font: 600 max(9px, 0.585rem) 'IBM Plex Sans', sans-serif; color: #fff; letter-spacing: 0; }
+  .lbl3d i { display: none; font: 400 max(9px, 0.51rem) 'IBM Plex Mono', monospace; font-style: normal; color: #c9d1d9; }
+  .lbl3d:hover { position: relative; z-index: 5; background: rgba(7,11,16,0.97); padding: 1px 6px 2px; }
+  .lbl3d:hover b { font-size: max(11px, 0.72rem); }
+  .lbl3d:hover i { display: block; font-size: max(10px, 0.62rem); }
+  .lbl3d.small b { font-size: max(9px, 0.54rem); }
+  @media (max-width: 900px) { .lbl3d b { font-size: 8px; } }
+  .side-extra { display: none; }
+  .facts-list { list-style: none; padding: 0; margin: 0.2rem 0 0; }
+  .facts-list li { padding: 0.4rem 0.7rem; border-left: 2px solid var(--border); background: rgba(255,255,255,0.02); border-radius: 0 0.4rem 0.4rem 0;
+    font-size: 0.84rem; line-height: 1.45; color: var(--text-dim); }
+  .facts-list li + li { margin-top: 0.35rem; }
+  .facts-list b { color: var(--text); font-weight: 600; margin-right: 0.35rem; }
+  .zoom3d { position: absolute; top: 10px; right: 10px; z-index: 6; display: flex; flex-direction: column; gap: 4px; }
+  .zoom3d button { min-width: 2rem; height: 2rem; padding: 0 0.4rem; background: rgba(14,15,12,0.88); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; font: 500 0.85rem 'IBM Plex Sans', sans-serif; cursor: pointer; }
+  .zoom3d button:hover { border-color: var(--accent); color: var(--accent); }
+  .zoom3d button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .legend3d { position: absolute; top: 10px; left: 12px; z-index: 6; display: flex; gap: 0.9rem; font-size: 0.8rem; color: var(--text); pointer-events: none; }
+  .legend3d span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 2px; background: var(--c); margin-right: 6px; vertical-align: -1px; }
+  .canvas-wait { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-dimmer); font-size: 0.85rem; text-align: center; padding: 1rem; }
+  .canvas-wrap.ready .canvas-wait { display: none; }
+
+  .metric-table { display: flex; flex-direction: column; gap: 0.3rem; }
+  .metric-row { display: grid; grid-template-columns: var(--cols, 14rem 1fr 1fr 1fr); gap: 0.6rem; padding: 0.45rem 0.65rem; border-radius: 0.35rem; background: rgba(255,255,255,0.025); font-family: 'IBM Plex Mono', monospace; font-size: 0.77rem; align-items: center; color: var(--text-dim); }
+  .metric-row.head { background: none; color: var(--text-dimmer); font-family: 'IBM Plex Sans', sans-serif; font-size: 0.72rem; padding-bottom: 0.1rem; }
+  .metric-row .m { color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 0.8rem; }
+  .metric-row .s { font-family: 'IBM Plex Sans', sans-serif; font-size: 0.8rem; line-height: 1.45; }
+  .metric-row .c { text-align: center; }
+  .metric-row .good { color: var(--accent); font-weight: 500; }
+  .metric-row .bad { color: var(--red-soft); }
+  .metric-row .warn { color: var(--amber-soft); }
+
+  .card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.85rem; }
+  .card-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .split { flex: 1; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 1rem; min-height: 0; }
+  .split > .canvas-wrap { min-height: 340px; }
+
+  .walk { display: flex; flex-direction: column; gap: 0.55rem; }
+  .walk-step { display: grid; grid-template-columns: 2.2rem 1fr; gap: 0.8rem; align-items: start; padding: 0.7rem 0.95rem; background: linear-gradient(160deg, var(--panel), var(--panel-2)); border: 1px solid var(--border); border-radius: 0.6rem; border-left: 3px solid var(--accent); }
+  .walk-step .n { font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; font-weight: 500; color: var(--accent); line-height: 1; }
+  .walk-step .b { color: var(--text); font-weight: 500; font-size: 0.92rem; }
+  .walk-step .d { color: var(--text-dim); font-size: 0.83rem; line-height: 1.5; margin-top: 0.2rem; }
+  .walk-step.s2 { border-left-color: var(--blue-soft); } .walk-step.s2 .n { color: var(--blue-soft); }
+  .walk-step.s3 { border-left-color: var(--amber); } .walk-step.s3 .n { color: var(--amber-soft); }
+  .walk-step.s4 { border-left-color: var(--purple-soft); } .walk-step.s4 .n { color: var(--purple-soft); }
+
+  .title-slide { justify-content: center; align-items: center; text-align: center; gap: 0.7rem !important; }
+  .title-slide h1 { font-size: 3.4rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; color: var(--text); }
+  .title-slide .sub { font-size: 1.1rem; color: var(--text-dim); max-width: 760px; line-height: 1.55; }
+  .title-slide .facts { display: flex; gap: 2.2rem; margin-top: 1.2rem; flex-wrap: wrap; justify-content: center; }
+  .title-slide .facts div { text-align: center; }
+  .title-slide .facts b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; font-weight: 500; color: var(--text); }
+  .title-slide .facts span { font-size: 0.78rem; color: var(--text-dimmer); }
+  .title-slide .live { margin-top: 1rem; font-size: 0.85rem; color: var(--text-dimmer); }
+  .title-slide .live a { color: var(--accent); }
+
+  .callout-big { padding: 1.1rem; background: linear-gradient(135deg, rgba(245,166,35,0.12) 0%, rgba(88,166,255,0.06) 100%); border: 1px solid rgba(245,166,35,0.35); border-radius: 0.7rem; text-align: center; }
+  .callout-big .big { font-family: 'IBM Plex Mono', monospace; font-size: 2.3rem; font-weight: 500; color: var(--accent); line-height: 1; letter-spacing: -0.02em; }
+  .callout-big .lbl { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.4rem; }
+  .callout-big .desc { margin-top: 0.7rem; color: var(--text-dim); font-size: 0.84rem; line-height: 1.55; }
+  .callout-big.red { background: linear-gradient(135deg, rgba(248,81,73,0.12) 0%, rgba(210,153,34,0.06) 100%); border-color: rgba(248,81,73,0.35); }
+  .callout-big.red .big { color: var(--red-soft); }
+
+  .why { padding: 0.7rem 0.95rem; border-left: 3px solid var(--amber); background: rgba(210,153,34,0.08); border-radius: 0 0.5rem 0.5rem 0; font-size: 0.85rem; line-height: 1.55; color: var(--text-dim); }
+  .why strong { color: var(--amber-soft); font-weight: 600; margin-right: 0.35rem; }
+
+  .verdict { display: inline-block; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.72rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 999px; margin-right: 0.4rem; }
+  .verdict.got { background: rgba(248,81,73,0.18); color: var(--red-soft); }
+  .verdict.ok { background: rgba(245,166,35,0.15); color: var(--accent); }
+
+  footer { display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 1rem; background: linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%); border: 1px solid var(--border); border-radius: 0.65rem; gap: 1rem; }
+  .nav-left, .nav-right, .nav-center { display: flex; align-items: center; gap: 0.7rem; }
+  .btn { background: rgba(88,166,255,0.1); color: var(--text); border: 1px solid rgba(88,166,255,0.35); padding: 0.45rem 0.9rem; border-radius: 0.4rem; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.8rem; font-weight: 500; cursor: pointer; }
+  .btn:hover:not(:disabled) { background: rgba(88,166,255,0.2); border-color: var(--blue-soft); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn.primary { background: rgba(245,166,35,0.13); border-color: rgba(245,166,35,0.5); }
+  .btn.primary:hover:not(:disabled) { background: rgba(245,166,35,0.25); border-color: var(--accent); }
+  .btn:focus-visible, .dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .step-dots { display: flex; gap: 0.28rem; flex-wrap: wrap; }
+  .step-dots .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); cursor: pointer; border: 0; padding: 0; }
+  .step-dots .dot.active { background: var(--accent); box-shadow: 0 0 0 3px rgba(245,166,35,0.2); }
+  .step-dots .dot.done { background: rgba(245,166,35,0.4); }
+  .step-label { color: var(--text-dim); font-size: 0.75rem; font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
+  .step-label b { color: var(--accent); font-weight: 500; }
+
+  /* Wide screens: text in a left column, the 3D view full height on the right (a 3.8:1 strip shrinks the diagram) */
+  @media (min-aspect-ratio: 17/10) and (min-width: 1100px) {
+    .slide.scene-slide.active { display: grid; grid-template-columns: minmax(16rem, 26%) minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr);
+      column-gap: 1.8rem; row-gap: 0.85rem; align-content: stretch; }
+    .scene-slide > .slide-num, .scene-slide > h1, .scene-slide > .slide-lead, .scene-slide > .side-extra { grid-column: 1; }
+    .scene-slide > .side-extra { display: block; align-self: start; min-height: 0; }
+    .scene-slide > .slide-lead { align-self: start; font-size: 1rem; line-height: 1.65; }
+    .scene-slide > .canvas-wrap { grid-column: 2; grid-row: 1 / span 4; min-height: 0; height: 100%; }
+  }
+  @media (max-width: 900px) {
+    body { padding: 0.8rem 0.9rem; }
+    header .subtitle { display: none; }
+    .card-grid, .card-grid.two, .card-grid.four, .split { grid-template-columns: 1fr; }
+    .split > .canvas-wrap { min-height: 300px; }
+    .metric-row { --cols: 1fr 1fr !important; }
+    .metric-row > *:first-child { grid-column: 1 / -1; }
+    .title-slide h1 { font-size: 2.3rem; }
+    .step-dots { display: none; }
+    .canvas-hint { white-space: normal; width: 90%; text-align: center; }
+  }
+
+  /* ---- Radar's own look, from the site's theme: JetBrains Mono text, Space Grotesk headings, square corners,
+     uppercase labels, dashed rules, the breaking-change red, and faint scope rings behind the page ---- */
+  :root { --red-soft: #ff6b5b; --ok: #7bd88f; --rule: rgba(245,166,35,0.14); --rule-2: rgba(245,166,35,0.26); }
+  html, body { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 400; letter-spacing: -0.005em; }
+  body { background: repeating-radial-gradient(circle at 104% 112%, rgba(245,166,35,0.05) 0 1px, transparent 1px 7rem), var(--bg); }
+  h1, h3, header .brand, .callout-big .big, .title-slide .facts b, .walk-step .b, .walk-step .n { font-family: 'Space Grotesk', system-ui, sans-serif; }
+  code.k, .mono, .example, .ex-title, .metric-row, .metric-row .m, .metric-row .s, .metric-row.head, .canvas-hint, .step-label,
+  .slide-num, .lbl3d b, .lbl3d i, .zoom3d button, .legend3d, .verdict { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  header { border-bottom: 1px dashed var(--rule-2); }
+  header .brand { text-transform: uppercase; letter-spacing: 0.08em; font-size: 1rem; }
+  header .subtitle { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.64rem; }
+  .slide-num { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; font-size: 0.64rem; }
+  .slide-num::before { content: "\25CB"; color: var(--accent); margin-right: 0.6em; }
+  h1.slide-title { font-weight: 700; letter-spacing: -0.02em; }
+  .slide-lead { font-size: 0.84rem; }
+  .card, .walk-step { background: var(--panel); border: 1px solid var(--rule); border-radius: 2px; }
+  .card h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-soft); }
+  .card p, .card li { font-size: 0.8rem; }
+  .canvas-wrap { background: #111209; border: 1px solid var(--rule-2); border-radius: 3px; }
+  .canvas-hint, .zoom3d button { border-radius: 2px; }
+  .example { border-radius: 2px; border-style: dashed; font-size: 0.74rem; }
+  .metric-row { background: none; border-radius: 0; border-bottom: 1px dashed var(--rule); font-size: 0.74rem; }
+  .metric-row.head { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.62rem; border-bottom: 1px solid var(--rule-2); }
+  .metric-row .m, .metric-row .s { font-size: 0.75rem; }
+  .metric-row { padding-top: 0.36rem; padding-bottom: 0.36rem; }
+  .facts-list li { font-size: 0.76rem; padding: 0.32rem 0.6rem; }
+  @media (min-aspect-ratio: 17/10) and (min-width: 1100px) { .scene-slide > .slide-lead { font-size: 0.88rem; line-height: 1.6; } }
+  .metric-row .good { color: var(--ok); }
+  .callout-big { background: rgba(245,166,35,0.05); border: 1px dashed rgba(245,166,35,0.45); border-radius: 3px; }
+  .why { border-radius: 0; background: rgba(245,166,35,0.05); border-left: 2px solid var(--accent); }
+  .why strong { color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; }
+  .verdict { border-radius: 2px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.62rem; }
+  .verdict.ok { background: rgba(123,216,143,0.12); color: var(--ok); }
+  .legend3d { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .legend3d span::before { border-radius: 0; }
+  .lbl3d { border-radius: 1px; background: rgba(14,15,12,0.9); }
+  @media (max-width: 900px) { .lbl3d b { font-family: 'Space Grotesk', system-ui, sans-serif; } }   /* narrower than mono on small scenes */
+  footer { background: var(--panel); border: 1px solid var(--rule); border-radius: 3px; }
+  .btn { border-radius: 2px; background: transparent; border-color: var(--rule-2); font: 600 0.68rem 'JetBrains Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+  .btn:hover:not(:disabled) { background: rgba(245,166,35,0.08); border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #14150f; }
+  .btn.primary:hover:not(:disabled) { background: #ffb940; border-color: #ffb940; }
+  .step-dots .dot { border-radius: 1px; }
+  .step-dots .dot.active { box-shadow: 0 0 0 3px rgba(245,166,35,0.25); }
+
+  /* Title: text on the left, the live scope on the right */
+  .title-slide.radar-title.active { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); column-gap: 2.6rem !important;
+    align-items: stretch; justify-items: stretch; text-align: left; }
+  .radar-title .t-text { display: flex; flex-direction: column; justify-content: center; gap: 1rem; min-width: 0; }
+  .radar-title h1 { font-size: 3.6rem; }
+  .radar-title .sub { max-width: 60ch; font-size: 0.95rem; }
+  .radar-title .facts { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 1.1rem 2rem; margin-top: 0.6rem; }
+  .radar-title .facts div { text-align: left; border-left: 2px solid var(--accent); padding-left: 0.75rem; }
+  .radar-title .facts span { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.64rem; }
+  .radar-title .canvas-wrap { min-height: 320px; }
+  @media (max-width: 900px) {
+    .title-slide.radar-title.active { display: flex; align-items: stretch; }
+    .radar-title h1 { font-size: 2.3rem; }
+    .radar-title .facts { grid-template-columns: repeat(2, auto); }
+    .radar-title .canvas-wrap { flex: none; height: 320px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#f5a623" stroke-width="2.4"/><circle cx="16" cy="16" r="7.5" fill="none" stroke="#f5a623" stroke-width="2.4" opacity="0.7"/><path d="M16 16 L26 8" stroke="#f5a623" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="16" r="2.4" fill="#f5a623"/></svg>
+    <span>How Radar is built <span class="em">3D deck</span></span>
+  </div>
+  <div class="subtitle">Models explain, code decides</div>
+</header>
+
+<main>
+
+  <!-- 1 — Title, with the radar scope -->
+  <section class="slide active title-slide radar-title" data-slide="1">
+    <div class="t-text">
+      <div class="slide-num">Engineering deck</div>
+      <h1>How <span class="em">Radar</span> is built</h1>
+      <div class="sub">Radar follows the releases of the libraries AI apps are built on and tells you which breaking changes, deprecations and advisories sit between your versions and the latest. An upgrade agent then finds the exact lines in your repository that break, and code checks every finding against the real file before you see it.</div>
+      <div class="facts">
+        <div><b>862</b><span>tests</span></div>
+        <div><b>13</b><span>packages tracked</span></div>
+        <div><b>428</b><span>breaking API changes recorded</span></div>
+        <div><b>8 of 8</b><span>recorded agent findings verified</span></div>
+        <div><b>$0.0094</b><span>costliest recorded agent run</span></div>
+      </div>
+      <div class="live">Live at <a href="https://radar.naveenlabs.tech/">radar.naveenlabs.tech</a> · use the arrow keys or the buttons below</div>
+    </div>
+    <div class="canvas-wrap" id="canvas-1">
+      <div class="canvas-wait">Loading the 3D view. It needs an internet connection for the 3D library.</div>
+      <div class="legend3d"><span style="--c:#ff6b5b">breaking changes recorded</span><span style="--c:#6b5a35">none</span></div>
+      <div class="canvas-hint">One blip per tracked package · outer ring PyPI, inner ring npm · taller = more breaking changes</div>
+    </div>
+  </section>
+
+  <!-- 2 — The system in 3D -->
+  <section class="slide scene-slide" data-slide="2">
+    <div class="slide-num">The system</div>
+    <h1 class="slide-title">Two containers, one database, <span class="em">four outside services</span></h1>
+    <p class="slide-lead"><strong>radar-web</strong> serves published data, answers Ask Radar and runs the upgrade agent on background threads. <strong>radar-batch</strong> collects releases, API surfaces and advisories on timers and builds the nightly digest. Both share one SQLite file; published data is immutable releases checked by hash.</p>
+    <ul class="side-extra facts-list">
+      <li><b>radar-web</b> pages, Ask Radar, the agent; read-only filesystem</li>
+      <li><b>radar-batch</b> collectors and the digest on leased jobs</li>
+      <li><b>SQLite (WAL)</b> releases, API diffs, advisories, agent runs</li>
+      <li><b>Release store</b> digests and JSON, served only when every hash matches</li>
+      <li><b>OpenRouter</b> agent models and digest notes</li>
+      <li><b>Ollama</b> local model and embeddings for Ask Radar</li>
+      <li><b>GitHub</b> releases for batch; repository snapshots for the agent</li>
+      <li><b>Sources</b> PyPI, npm, OSV advisories, arXiv, Hacker News, MCP registry</li>
+    </ul>
+    <div class="canvas-wrap" id="canvas-2" style="flex:1;">
+      <div class="canvas-wait">Loading the 3D view. It needs an internet connection for the 3D library.</div>
+      <div class="canvas-hint">Coloured dot = request or data · white dot = the reply coming back · drag to rotate</div>
+    </div>
+  </section>
+
+  <!-- 3 — Models explain, code decides -->
+  <section class="slide" data-slide="3">
+    <div class="slide-num">The rule behind every design choice</div>
+    <h1 class="slide-title">Models explain, <span class="em">code decides</span></h1>
+    <p class="slide-lead">A model may write a digest note, plan an investigation or draft a patch. Every number, score, version step and finding that reaches a visitor is computed or checked by plain code, so it cannot be talked into a wrong answer by the release notes or source code it is reading.</p>
+    <div class="card-grid four">
+      <div class="card green"><h3>Signal score</h3><p>A public formula over source tier, corroboration, star velocity and API evidence. The model never sets it.</p></div>
+      <div class="card blue"><h3>API changes</h3><p>Read from each release's source with <code class="k">ast</code> (Python) and tree-sitter (TypeScript). Never imported, never run.</p></div>
+      <div class="card amber"><h3>Agent findings</h3><p>Kept only if the quoted code is on the cited line of the real file, next to the usage.</p></div>
+      <div class="card red"><h3>Ask Radar</h3><p>"What broke in X" and "CVEs in X" are answered from data with no model at all.</p></div>
+    </div>
+    <div>
+      <div class="ex-title">radar/signal.py: the whole score (shortened)</div>
+      <div class="example"><span class="kw">def</span> score_cluster(items, velocity, has_api_change):
+    tier = 40 * (1.0 <span class="kw">if</span> any(i["tier"] == "official" <span class="kw">for</span> i <span class="kw">in</span> items) <span class="kw">else</span> 0.4)
+    corroboration = 20 * min(distinct_sources - 1, 3) / 3
+    velocity = 20 * min(log10(1 + stars_7d) / log10(1001), 1.0)
+    code = 20 <span class="kw">if</span> has_api_change <span class="kw">else</span> (12 <span class="kw">if</span> a_release_or_repo_backs_it <span class="kw">else</span> 0)
+    <span class="kw">return</span> min(100, round(tier + corroboration + velocity + code))
+<span class="c"># the same formula is published on /sources, versioned as radar.signal@1</span></div>
+    </div>
+  </section>
+
+  <!-- 4 — Digest pipeline -->
+  <section class="slide scene-slide" data-slide="4">
+    <div class="slide-num">The nightly digest</div>
+    <h1 class="slide-title">Four collectors, one digest, <span class="em">facts first</span></h1>
+    <p class="slide-lead">Collectors run on timers and feed one database. The nightly digest clusters and scores in code; only then does a model write short notes, which must pass schema and citation checks. Publishing writes a new immutable release and flips <code class="k">CURRENT</code>.</p>
+    <ul class="side-extra facts-list">
+      <li><b>collect</b> every 3 h: GitHub releases, arXiv, Hacker News, MCP registry</li>
+      <li><b>apisurface</b> every 6 h: API snapshot of each new release</li>
+      <li><b>advisories</b> every 6 h: OSV, which aggregates GitHub advisories</li>
+      <li><b>apibackfill</b> daily: older releases, 40 downloads a day</li>
+      <li><b>cluster + score</b> code only</li>
+      <li><b>notes</b> one model, $0.03 a day cap, schema and citations checked</li>
+      <li><b>publish</b> new release; old digests are never rewritten</li>
+    </ul>
+    <div class="canvas-wrap" id="canvas-4" style="flex:1;">
+      <div class="canvas-wait">Loading the 3D view.</div>
+      <div class="canvas-hint">Dots show data moving one way, collectors to the published release · drag to rotate</div>
+    </div>
+  </section>
+
+  <!-- 5 — Signal worked example -->
+  <section class="slide" data-slide="5">
+    <div class="slide-num">Worked example: one real cluster</div>
+    <h1 class="slide-title">Signal 69, <span class="em">and no model note</span></h1>
+    <p class="slide-lead">Cluster <code class="k">c15376</code> from the published digest of 4 Nov 2026: the <code class="k">langchain-anthropic==1.7.9</code> release, one item from one official source.</p>
+    <div class="card-grid two" style="align-items:start">
+      <div class="metric-table" style="--cols: 1.2fr 0.5fr 1.6fr">
+        <div class="metric-row head" style="--cols: 1.2fr 0.5fr 1.6fr"><span>Part</span><span class="c">Points</span><span>Why</span></div>
+        <div class="metric-row" style="--cols: 1.2fr 0.5fr 1.6fr"><span class="m">Tier (weight 40)</span><span class="c good">40</span><span class="s">The item is from an official source (GitHub releases)</span></div>
+        <div class="metric-row" style="--cols: 1.2fr 0.5fr 1.6fr"><span class="m">Corroboration (20)</span><span class="c">0</span><span class="s">One source, so no corroboration</span></div>
+        <div class="metric-row" style="--cols: 1.2fr 0.5fr 1.6fr"><span class="m">Code (20)</span><span class="c warn">12</span><span class="s">A release stands behind it, but no API break was found</span></div>
+        <div class="metric-row" style="--cols: 1.2fr 0.5fr 1.6fr"><span class="m">Velocity (20)</span><span class="c">about 17</span><span class="s">The rest of the 69: log-scaled 7-day star gain</span></div>
+        <div class="metric-row" style="background:rgba(255,255,255,0.05);--cols: 1.2fr 0.5fr 1.6fr"><span class="m">Signal</span><span class="c good">69</span><span class="s">As published on the cluster page</span></div>
+      </div>
+      <div class="stack-col">
+        <div class="ex-title">the published cluster page says</div>
+        <div class="example">langchain-anthropic==1.7.9    minor    signal 69
+
+<b>Unsynthesized:</b> no written summary for this cluster.
+The facts and sources below are computed, not generated.
+
+gh-langchain · official · 2026-11-02</div>
+        <div class="why"><strong>Why publish without a note</strong>The digest has a deadline and the notes have a daily dollar cap. If the cap closes or the model is down, the computed facts still ship, clearly labelled. A late digest helps nobody; an invented note is worse.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 — API diffs -->
+  <section class="slide" data-slide="6">
+    <div class="slide-num">How breaking changes are found</div>
+    <h1 class="slide-title">Read the source, <span class="em">never run it</span></h1>
+    <div class="card-grid two" style="align-items:start">
+      <div class="stack-col">
+        <div class="card blue"><h3>A snapshot per release</h3><p>Python packages are parsed with <code class="k">ast</code> from their source files; npm packages from their <code class="k">.d.ts</code> files with tree-sitter. Nothing is imported or executed. A daily backfill covers about two years of older minor releases, 40 downloads at a time.</p></div>
+        <div class="card amber"><h3>A diff between neighbours</h3><p>Removed, changed and deprecated public symbols, plus "moved": <code class="k">langgraph.prebuilt</code> now lives in the <code class="k">langgraph-prebuilt</code> package, which langgraph installs, so the import still works and it is reported as notable, not breaking.</p></div>
+        <div class="card green"><h3>Measured</h3><p>The diff evaluation runs 22 labelled cases: precision <strong>1.00</strong>, recall <strong>1.00</strong> (the gate is 0.9 and 0.8).</p></div>
+      </div>
+      <div>
+        <div class="ex-title">one recorded change, as the agent's GetChange tool returned it</div>
+        <div class="example">{"package": "pypi:openai",
+ "symbol":  "openai.lib.streaming.AssistantEventHandler",
+ "kind":    <span class="bad">"breaking"</span>,
+ "change":  "removed",
+ "detail":  "removed from the public API",
+ "from":    "3.15.0",
+ "to":      "3.16.2"}</div>
+        <div class="why" style="margin-top:0.7rem"><strong>Why every step, uncapped</strong><code class="k">api_changes.json</code> keeps every version step, so a project four minor versions behind gets the changes of all four steps chained, not just the last one.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 — Release timeline in 3D -->
+  <section class="slide scene-slide" data-slide="7">
+    <div class="slide-num">What Radar has recorded</div>
+    <h1 class="slide-title">157 version steps, <span class="em">16 that break</span></h1>
+    <p class="slide-lead">One row per tracked package and one tile per version step in the published <code class="k">upgrade.json</code>, newest step on the right. A red tower is a step with breaking API changes, taller for more (log scale); amber tiles have deprecations only.</p>
+    <div class="side-extra">
+      <div class="callout-big"><div class="big">307</div><div class="lbl">breaking changes in one step: llama-index-core 0.13.6 → 0.14.24</div>
+        <div class="desc">141 of 157 steps (90%) broke nothing, but 4 patch releases carried 21 breaking changes (openai 3.26.0 → 3.26.1: 11). The next slide has every span.</div></div>
+    </div>
+    <div class="canvas-wrap" id="canvas-7" style="flex:1;">
+      <div class="canvas-wait">Loading the 3D view.</div>
+      <div class="legend3d"><span style="--c:#ff6b5b">breaking</span><span style="--c:#f5a623">deprecations only</span><span style="--c:#4a4c40">neither</span></div>
+      <div class="canvas-hint">Hover a count to see its version step · drag to rotate · upgrade.json, generated 12 Nov 2026</div>
+    </div>
+  </section>
+
+  <!-- 8 — Table -->
+  <section class="slide" data-slide="8">
+    <div class="slide-num">The numbers</div>
+    <h1 class="slide-title">Every tracked package, <span class="em">its span and its breaks</span></h1>
+    <div class="metric-table" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr">
+      <div class="metric-row head" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>Package</span><span>Tracked span</span><span class="c">Steps</span><span class="c">Breaking</span><span class="c">Advisories on record</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:llama-index-core</span><span>0.13.6 → 0.14.25</span><span class="c">2</span><span class="c bad">307</span><span class="c">10</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:crewai</span><span>1.14.7 → 1.15.40</span><span class="c">19</span><span class="c bad">45</span><span class="c">0</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:anthropic</span><span>1.9.0 → 2.8.0</span><span class="c">18</span><span class="c bad">38</span><span class="c">2</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:autogen-agentchat</span><span>0.6.4 → 0.7.5</span><span class="c">2</span><span class="c bad">18</span><span class="c">0</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:openai</span><span>3.22.1 → 3.49.0</span><span class="c">30</span><span class="c bad">13</span><span class="c">0</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>npm:@anthropic-ai/sdk</span><span>0.129.0 → 1.8.0</span><span class="c">18</span><span class="c warn">6</span><span class="c">2</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:mcp</span><span>2.1.1 → 2.3.0</span><span class="c">2</span><span class="c warn">1</span><span class="c">10</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>npm:openai</span><span>7.26.0 → 7.55.0</span><span class="c">30</span><span class="c">0</span><span class="c">0</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:google-genai</span><span>2.26.0 → 3.2.0</span><span class="c">12</span><span class="c">0</span><span class="c">0</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:langchain</span><span>1.3.18 → 1.5.0</span><span class="c">10</span><span class="c">0</span><span class="c">23</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:langgraph</span><span>1.2.11 → 1.2.20</span><span class="c">9</span><span class="c">0</span><span class="c">3</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>npm:@modelcontextprotocol/sdk</span><span>1.31.0 → 1.32.2</span><span class="c">3</span><span class="c">0</span><span class="c">9</span></div>
+      <div class="metric-row" style="--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span>pypi:ollama</span><span>0.5.4 → 0.6.3</span><span class="c">2</span><span class="c">0</span><span class="c">0</span></div>
+      <div class="metric-row" style="background:rgba(255,255,255,0.05);--cols: 1.6fr 1.2fr 0.6fr 0.7fr 0.8fr"><span class="m">13 packages</span><span></span><span class="c">157</span><span class="c bad">428</span><span class="c">59</span></div>
+    </div>
+    <div class="why"><strong>Read with care</strong>A span is the window Radar keeps in <code class="k">upgrade.json</code>, so spans differ in length; compare packages by breaks per step, not raw totals. Advisories on record include old, long-fixed ones; the agent shows each with its fixed-in versions.</div>
+  </section>
+
+  <!-- 9 — Agent graph -->
+  <section class="slide scene-slide" data-slide="9">
+    <div class="slide-num">The upgrade agent</div>
+    <h1 class="slide-title">Eight nodes, <span class="em">three of them a model</span></h1>
+    <p class="slide-lead">A LangGraph state graph. Fetching, parsing, grounding against Radar's recorded changes, indexing usages, verifying and computing the upgrade path are plain Python; only plan, investigate and the report text use a model. The dashed links are the early exits.</p>
+    <ul class="side-extra facts-list">
+      <li><b>fetch_inputs</b> public repo snapshot or a pasted file</li>
+      <li><b>parse_deps</b> requirements, pyproject, package.json, lock files</li>
+      <li><b>ground</b> your versions against Radar's recorded changes</li>
+      <li><b>index_code</b> Python and TypeScript usages of changed symbols</li>
+      <li><b>plan</b> model orders up to 8 candidates</li>
+      <li><b>investigate</b> model loop with read-only tools, 30 calls max</li>
+      <li><b>verify</b> code checks every quote against the file</li>
+      <li><b>report</b> patch and summary by model; path and difficulty by code</li>
+    </ul>
+    <div class="canvas-wrap" id="canvas-9" style="flex:1;">
+      <div class="canvas-wait">Loading the 3D view.</div>
+      <div class="canvas-hint">Dashed: no candidates goes straight to report; an empty plan or a spent budget goes straight to verify</div>
+    </div>
+  </section>
+
+  <!-- 10 — A real run -->
+  <section class="slide" data-slide="10">
+    <div class="slide-num">Worked example: a recorded run</div>
+    <h1 class="slide-title">openai 3.15.0 → 3.24.0, <span class="em">one line that breaks</span></h1>
+    <p class="slide-lead">The recorded run on the public demo repository <code class="k">upgrade-demo-chat-backend</code>, condensed from its event stream. Three models took part; the whole run cost <strong>$0.000749</strong> and 5,727 tokens.</p>
+    <div class="card-grid two" style="align-items:start">
+      <div>
+        <div class="ex-title">event stream, condensed</div>
+        <div class="example">info       Read 2 files; found 1 dependency
+info       pypi:openai 3.15.0 -> 3.24.0 (outdated, <b>874 changes</b>)
+candidate  c1  openai.lib.streaming.AssistantEventHandler
+               server.py line 8
+plan       "the import at server.py:8 fails immediately"
+tool       GetChange        removed, 3.15.0 -> 3.16.2
+tool       ReadLines        server.py 1-40
+tool       FindUsages       server.py:8: class Collector(
+                              AssistantEventHandler):
+tool       GetMigrationNote no migration notes
+candidate  c1  <b>confirmed</b> by the model
+verify     c1  <span class="out">ok</span>   (code: quote on the cited line)
+result     patch: class Collector:   (base class dropped)</div>
+      </div>
+      <div class="stack-col">
+        <div class="card amber"><h3>What the model did</h3><p>Ordered the one candidate, called four read-only tools, confirmed the break and wrote the patch and summary.</p></div>
+        <div class="card green"><h3>What code did</h3><p>Fetched the snapshot, found the dependency and its 874 recorded changes, located the usage at line 8, checked the quote against the real file, and computed the upgrade path: 9 version steps, difficulty Easy, about 0.75 hours, 1 file.</p></div>
+        <div class="why"><strong>Three models, by role</strong>GLM-5.3 Flash planned and wrote the report; DeepSeek V4.1 Flash and a free Nemotron model investigated. The free model is added only for public-repository runs, so a pasted file never reaches it.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 — The verifier -->
+  <section class="slide" data-slide="11">
+    <div class="slide-num">The gate between the model and the visitor</div>
+    <h1 class="slide-title">A finding counts only if <span class="em">its quote is on the line</span></h1>
+    <div class="card-grid two" style="align-items:start">
+      <div>
+        <div class="ex-title">radar/agent/verify.py (shortened)</div>
+        <div class="example"><span class="kw">def</span> _check(finding, files, candidates):
+    <span class="kw">if</span> finding.verdict != "confirmed":     <span class="kw">return</span> "not a confirmed finding"
+    <span class="kw">if</span> finding.candidate <span class="kw">not in</span> candidates: <span class="kw">return</span> "refers to no known candidate"
+    <span class="kw">for</span> ev <span class="kw">in</span> finding.evidence:
+        <span class="kw">if</span> ev.path <span class="kw">not in</span> files:           <span class="kw">return</span> "not in the snapshot"
+        <span class="kw">if</span> ev.line <span class="kw">not in</span> range(1, len(lines)+1): <span class="kw">return</span> "line does not exist"
+        <span class="kw">if</span> len(quote) &lt; 6 <span class="kw">or</span> quote <span class="kw">not in</span> line_text:
+            <span class="kw">return</span> "the quote is not on that line"
+    <span class="kw">if</span> no evidence from the candidate's own file:
+        <span class="kw">return</span> "no evidence from the candidate's file"
+    <span class="kw">if</span> no evidence within 3 lines of the usage:
+        <span class="kw">return</span> "no evidence near the usage"
+    <span class="kw">return</span> ""   <span class="c"># verified</span></div>
+      </div>
+      <div class="stack-col">
+        <div class="card green"><h3>What it rules out</h3><p>A finding about a file the agent never fetched, a line that does not exist, a paraphrased quote, a quote from some other file, or evidence far from the usage the candidate was about. Paths are normalised, so <code class="k">../</code> tricks fail too.</p></div>
+        <div class="card blue"><h3>What it does not decide</h3><p>Whether the patch is right. The report says patches are suggestions to check against the listed API changes, and the verifier only proves the model looked at the real code.</p></div>
+        <div class="why"><strong>Measured</strong>The offline agent evaluation runs 8 fixture repositories, including a hostile one: precision <strong>1.0</strong>, recall <strong>0.833</strong>, $0 (scripted models). The gate is 0.9 and 0.8.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 — Three recorded runs -->
+  <section class="slide" data-slide="12">
+    <div class="slide-num">Three recorded runs</div>
+    <h1 class="slide-title">Eight findings, <span class="em">eight verified</span></h1>
+    <p class="slide-lead">The three runs on the agent page are recordings of real runs on public demo repositories, replayed at no cost. Numbers from their event streams.</p>
+    <div class="metric-table" style="--cols: 1.25fr 1.1fr 0.7fr 0.7fr 0.7fr 0.7fr 0.8fr">
+      <div class="metric-row head" style="--cols: 1.25fr 1.1fr 0.7fr 0.7fr 0.7fr 0.7fr 0.8fr"><span>Repository</span><span>Upgrade</span><span class="c">Changes recorded</span><span class="c">Candidates</span><span class="c">Verified</span><span class="c">Cost</span><span class="c">Tokens</span></div>
+      <div class="metric-row" style="--cols: 1.25fr 1.1fr 0.7fr 0.7fr 0.7fr 0.7fr 0.8fr"><span class="m">upgrade-demo-chat-backend</span><span>openai 3.15.0 → 3.24.0</span><span class="c">874</span><span class="c">1</span><span class="c good">1 of 1 (100%)</span><span class="c">$0.0007</span><span class="c">5,727</span></div>
+      <div class="metric-row" style="--cols: 1.25fr 1.1fr 0.7fr 0.7fr 0.7fr 0.7fr 0.8fr"><span class="m">upgrade-demo-tool-agent</span><span>mcp 1.30.0 → 2.3.0</span><span class="c">421</span><span class="c">3</span><span class="c good">3 of 3 (100%)</span><span class="c">$0.0045</span><span class="c">19,426</span></div>
+      <div class="metric-row" style="--cols: 1.25fr 1.1fr 0.7fr 0.7fr 0.7fr 0.7fr 0.8fr"><span class="m">upgrade-demo-rag-service</span><span>langchain 0.3.30 → 1.4.3</span><span class="c">758</span><span class="c">4</span><span class="c good">4 of 4 (100%)</span><span class="c">$0.0094</span><span class="c">35,700</span></div>
+    </div>
+    <div class="card-grid two" style="align-items:start">
+      <div class="card amber"><h3>The upgrade path, computed in code</h3><p>For the RAG service: <strong>6 steps</strong> (1.0.8, 1.1.3, 1.2.18, 1.3.18, 1.4.2, 1.4.3), difficulty <strong>Medium</strong>, about <strong>1.5 hours</strong>, 1 file to change, with the package's 23 advisories on record listed beside it.</p></div>
+      <div class="card green"><h3>What the report hands over</h3><p>A summary, the gaps it could not check, a unified diff per finding, the whole patch as a <code class="k">.diff</code> file, and an issue in Markdown ready to paste into GitHub.</p></div>
+    </div>
+  </section>
+
+  <!-- 13 — Ask Radar + upgrade report -->
+  <section class="slide" data-slide="13">
+    <div class="slide-num">Two tools that need no model, or no upload</div>
+    <h1 class="slide-title">Answers from data, <span class="em">checks in your browser</span></h1>
+    <div class="card-grid two" style="align-items:start">
+      <div class="stack-col">
+        <div class="card green"><h3>Ask Radar</h3><p>Structured questions ("what broke in X", "CVEs in X") are answered from the API-diff and advisory data, and the answer says so: <em style="font-style:normal;color:var(--text)">"Answered from API-diff and advisory data; no model was involved."</em></p><p>Open questions search the archive with embeddings and a local model on the Docker network answers, every sentence citing a real item. Without Ollama, data answers still work.</p></div>
+        <div class="card blue"><h3>Limits</h3><p>10 questions a minute per address, with a small burst. Release notes are untrusted text: fenced and labelled in every prompt.</p></div>
+      </div>
+      <div class="stack-col">
+        <div class="card amber"><h3>Upgrade report</h3><p>A pasted dependency file is read in the browser and compared with the published <code class="k">upgrade.json</code> there. The file is never sent to the server.</p></div>
+        <div class="card purple"><h3>"My stack" and "since last visit"</h3><p>Kept in the visitor's browser only. Radar stores nothing about what you use.</p></div>
+        <div class="why"><strong>Why</strong>The cheapest, safest model call is the one you do not make. Most questions people ask about upgrades have exact answers in the data.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 — Cost and safety -->
+  <section class="slide" data-slide="14">
+    <div class="slide-num">Cost and safety controls</div>
+    <h1 class="slide-title">Every agent run has <span class="em">a hard ceiling</span></h1>
+    <p class="slide-lead">The agent shares the gateway from the common core: the run budget is checked before every model call. Radar adds a time reserve, so a run that spends its investigation time still writes a report.</p>
+    <div class="card-grid two" style="align-items:start">
+      <div class="metric-table" style="--cols: 1.3fr 1fr">
+        <div class="metric-row head" style="--cols: 1.3fr 1fr"><span>Limit</span><span>Default</span></div>
+        <div class="metric-row" style="--cols: 1.3fr 1fr"><span class="m">Per run</span><span>$0.05 and 180 s</span></div>
+        <div class="metric-row" style="--cols: 1.3fr 1fr"><span class="m">Kept for the report</span><span>45 s of the run's time</span></div>
+        <div class="metric-row" style="--cols: 1.3fr 1fr"><span class="m">Candidates, tool calls</span><span>8 and 30 per run</span></div>
+        <div class="metric-row" style="--cols: 1.3fr 1fr"><span class="m">Agent, per day</span><span>$1.00; the owner set $0.25</span></div>
+        <div class="metric-row" style="--cols: 1.3fr 1fr"><span class="m">Digest notes, per day</span><span>$0.03</span></div>
+        <div class="metric-row" style="--cols: 1.3fr 1fr"><span class="m">Stop-all, weekly brake</span><span>checked before paid work starts; brake at 90%</span></div>
+        <div class="metric-row" style="--cols: 1.3fr 1fr"><span class="m">Recorded runs</span><span class="good">replayed at no cost</span></div>
+      </div>
+      <div class="stack-col">
+        <div class="ex-title">radar/agent/graph.py</div>
+        <div class="example">REPORT_SECONDS = 45        <span class="c"># always left for the final report</span>
+...
+ctx.gateway.budget.reserve(REPORT_SECONDS)
+<span class="c"># if investigating hits the limit, the graph jumps to verify and report,</span>
+<span class="c"># and the report says how many candidates were not investigated</span></div>
+        <div class="why"><strong>Untrusted input</strong>Repository code and release notes are fenced in prompts, tools only read the fetched snapshot, and nothing from a repository is ever executed. Findings are kept 30 days; the code is discarded after the run.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 — Layers -->
+  <section class="slide" data-slide="15">
+    <div class="slide-num">Defence in layers</div>
+    <h1 class="slide-title">Four layers, <span class="em">each with its own guard</span></h1>
+    <div class="split">
+      <div class="canvas-wrap" id="canvas-15">
+        <div class="canvas-wait">Loading the 3D view.</div>
+        <div class="canvas-hint">Top = closest to the visitor · white dot = reply · slide 2 has every link</div>
+      </div>
+      <div class="stack-col">
+        <div class="card" style="border-left:3px solid var(--grey)"><h3>Edge</h3><p>TLS, HSTS for a year, strict CSP with no inline code, <code class="k">frame-ancestors 'none'</code>. Per-IP limits: Ask Radar 10 a minute, error reports 5 a minute, agent runs per day.</p></div>
+        <div class="card green"><h3>App</h3><p>Non-root, read-only root filesystem, all Linux capabilities dropped, <code class="k">no-new-privileges</code>, CPU and memory limits, and a concurrency gate.</p></div>
+        <div class="card amber"><h3>Data</h3><p>SQLite in WAL mode with a nightly backup. Releases carry a SHA-256 manifest and web refuses a file whose hash does not match. A published digest is never rewritten; corrections are errata.</p></div>
+        <div class="card purple"><h3>External</h3><p>OpenRouter with data collection denied, except one free model allowed only for public-repository runs, never for pasted files. Ollama only on the Docker network. GitHub through a token that can only read public code.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 — Decisions -->
+  <section class="slide" data-slide="16">
+    <div class="slide-num">Decisions and trade-offs</div>
+    <h1 class="slide-title">What was chosen, <span class="em">and what it costs</span></h1>
+    <div class="metric-table" style="--cols: 1.15fr 0.9fr 1.6fr 1.3fr">
+      <div class="metric-row head"><span>Decision</span><span>Instead of</span><span>Why</span><span>What it costs</span></div>
+      <div class="metric-row"><span class="m">Diff the source with ast and tree-sitter</span><span class="s">Reading changelogs</span><span class="s">Changelogs miss and mislabel breaks; the API surface does not lie</span><span class="s">Runtime-only changes are invisible</span></div>
+      <div class="metric-row"><span class="m">Score with a public formula</span><span class="s">A model ranking</span><span class="s">Same inputs, same order; anyone can check it on /sources</span><span class="s">Coarse: four parts, fixed weights</span></div>
+      <div class="metric-row"><span class="m">Publish facts if notes fail</span><span class="s">Waiting for the model</span><span class="s">The digest ships on time, labelled "unsynthesized"</span><span class="s">Some days read as bare facts</span></div>
+      <div class="metric-row"><span class="m">Code verifier on every finding</span><span class="s">Trusting the investigator</span><span class="s">A finding must point at a real line of the real file</span><span class="s">A true finding with a sloppy quote is dropped</span></div>
+      <div class="metric-row"><span class="m">Upgrade path and difficulty in code</span><span class="s">Asking the model</span><span class="s">Steps and effort come from recorded changes and usages</span><span class="s">A rough estimate, not a plan</span></div>
+      <div class="metric-row"><span class="m">Upgrade report in the browser</span><span class="s">Uploading the file</span><span class="s">Private by construction; no server cost</span><span class="s">No code view, so it cannot name lines</span></div>
+      <div class="metric-row"><span class="m">Never rewrite a digest</span><span class="s">Editing in place</span><span class="s">Feeds and links stay true; corrections are errata</span><span class="s">Mistakes stay visible beside their fix</span></div>
+      <div class="metric-row"><span class="m">Free model only for public repos</span><span class="s">One model for all</span><span class="s">Cheaper runs where privacy is not at stake</span><span class="s">Two model paths to test</span></div>
+    </div>
+  </section>
+
+  <!-- 17 — Failure, tests, ops -->
+  <section class="slide" data-slide="17">
+    <div class="slide-num">Failure, testing and operations</div>
+    <h1 class="slide-title">Built to fail <span class="em">in a known way</span></h1>
+    <div class="card-grid">
+      <div class="card red"><h3>When something breaks</h3><ul>
+        <li>A source fails: source health on /sources; below 80% of official sources the digest is labelled "partial".</li>
+        <li>Daily cap or model outage: facts published, notes "unsynthesized".</li>
+        <li>A crash restarts the container; leased jobs return; agent runs in flight are marked failed.</li>
+        <li>A bad release fails its hash check; the worker's silence trips the uptime monitor in about 30 minutes.</li>
+      </ul></div>
+      <div class="card green"><h3>How it is tested</h3><ul>
+        <li><strong>862 tests</strong> in 91 files on every push; models are scripted fakes.</li>
+        <li>Diff evaluation: 22 cases, precision 1.00, recall 1.00.</li>
+        <li>Agent evaluation: 8 fixture repositories, precision 1.0, recall 0.833; a live run with real models before a deploy.</li>
+        <li>Every bug fix starts with a failing test.</li>
+      </ul></div>
+      <div class="card blue"><h3>How it is deployed</h3><ul>
+        <li>Recent releases: a data-volume backup and a git tag first.</li>
+        <li>Fast-forward-only pull; a failed build keeps the old containers running.</li>
+        <li>A health wait that goes back to the old commit if web is not healthy.</li>
+        <li>A runbook in Simplified Technical English: one instruction per step.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- 18 — Summary -->
+  <section class="slide" data-slide="18">
+    <div class="slide-num">Summary</div>
+    <h1 class="slide-title">Read the code, <span class="em">prove every line</span></h1>
+    <div class="split">
+      <div class="walk">
+        <div class="walk-step"><div class="n">1</div><div><div class="b">Code decides</div><div class="d">Scores, diffs, upgrade paths and the verdict on every finding are plain code (slides 3, 5, 11).</div></div></div>
+        <div class="walk-step s2"><div class="n">2</div><div><div class="b">Never run what you read</div><div class="d">Packages and repositories are parsed, never imported or executed (slides 6, 14).</div></div></div>
+        <div class="walk-step s3"><div class="n">3</div><div><div class="b">Ship facts on time</div><div class="d">The digest publishes computed facts even when the model cannot write notes (slides 4, 5).</div></div></div>
+        <div class="walk-step s4"><div class="n">4</div><div><div class="b">Spend with a ceiling</div><div class="d">Run budgets, a reserved report window, daily caps and a weekly brake (slide 14).</div></div></div>
+      </div>
+      <div class="stack-col" style="justify-content:center">
+        <div class="callout-big">
+          <div class="big">8 of 8</div>
+          <div class="lbl">recorded agent findings verified by code, for under a cent per run</div>
+          <div class="desc">More in this repo: ARCHITECTURE.md (containers, security, operations) and HISTORY.md (what was built when). Live: <span class="mono">radar.naveenlabs.tech/agent</span></div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--text-dimmer);text-align:center">Designed and built by Naveenkumar Dhamodharan. Numbers from the code, the published data of 12 Nov 2026 and the recorded runs.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="nav-left"><button class="btn" id="prev-btn">← Prev</button></div>
+  <div class="nav-center">
+    <div class="step-dots" id="dots" role="group" aria-label="Slides"></div>
+    <div class="step-label">Slide <b id="step-num">1</b> of <b>18</b></div>
+  </div>
+  <div class="nav-right"><button class="btn primary" id="next-btn">Next →</button></div>
+</footer>
+
+<!-- Navigation: a plain script, so the deck works even when the 3D library cannot load -->
+<script>
+(function () {
+  var TOTAL = document.querySelectorAll('.slide').length, current = 1;
+  var dots = document.getElementById('dots');
+  for (var i = 1; i <= TOTAL; i++) {
+    var d = document.createElement('button');
+    d.className = 'dot'; d.type = 'button'; d.dataset.slide = i; d.setAttribute('aria-label', 'Slide ' + i);
+    d.addEventListener('click', function (e) { go(+e.currentTarget.dataset.slide); });
+    dots.appendChild(d);
+  }
+  function go(n) {
+    n = Math.max(1, Math.min(TOTAL, n));
+    document.querySelectorAll('.slide').forEach(function (el) { el.classList.toggle('active', +el.dataset.slide === n); });
+    var t = document.querySelector('.slide[data-slide="' + n + '"]'); if (t) t.scrollTop = 0;
+    current = n;
+    document.getElementById('step-num').textContent = n;
+    document.getElementById('prev-btn').disabled = n === 1;
+    document.getElementById('next-btn').disabled = n === TOTAL;
+    Array.prototype.forEach.call(dots.children, function (el, i) {
+      el.className = 'dot' + (i + 1 === n ? ' active' : i + 1 < n ? ' done' : '');
+    });
+    try { history.replaceState(null, '', '#' + n); } catch (e) {}
+    fitSlide(t);
+    window.dispatchEvent(new CustomEvent('slidechange', { detail: n }));
+  }
+  // Fit a text slide to the screen like presentation software: the largest zoom (up to 1.6x) at which nothing
+  // overflows. 3D slides already fill their box, and phones scroll instead.
+  function fitSlide(el) {
+    if (!el) return;
+    el.style.zoom = '';
+    if (el.querySelector('.canvas-wrap') || window.innerWidth < 900) return;
+    var fits = function () { return el.scrollHeight <= el.clientHeight + 1; };
+    if (!fits()) return;
+    var lo = 1, hi = 1.6;
+    for (var i = 0; i < 9; i++) {
+      var mid = (lo + hi) / 2;
+      el.style.zoom = mid;
+      if (fits()) lo = mid; else hi = mid;
+    }
+    el.style.zoom = (lo * 0.985).toFixed(3);
+  }
+  var resizeTimer;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { fitSlide(document.querySelector('.slide.active')); }, 120);
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitSlide(document.querySelector('.slide.active')); });
+  window.deckSlide = function () { return current; };
+  document.getElementById('prev-btn').addEventListener('click', function () { go(current - 1); });
+  document.getElementById('next-btn').addEventListener('click', function () { go(current + 1); });
+  window.addEventListener('keydown', function (e) {
+    if (e.target.closest && e.target.closest('input, textarea')) return;
+    if (e.key === ' ' && e.target.closest && e.target.closest('button')) return;
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); go(current + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(current - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); go(1); }
+    else if (e.key === 'End') { e.preventDefault(); go(TOTAL); }
+  });
+  function fromHash() { var n = parseInt((location.hash || '').slice(1), 10); return n >= 1 && n <= TOTAL ? n : 1; }
+  window.addEventListener('hashchange', function () { var n = fromHash(); if (n !== current) go(n); });
+  go(fromHash());
+})();
+</script>
+
+<!-- 3D scenes (three.js 0.160), built the first time their slide opens -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const C = { green: 0x3ddc97, amber: 0xd29922, red: 0xf85149, blue: 0x58a6ff, purple: 0xb392f0, orange: 0xf0883e, grey: 0x8b98a5, white: 0xc9d1d9 };
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const scenes = {};
+
+function makeSceneOn(container, cameraPos, target = [0, 0, 0], gridSize = 18) {
+  const w = container.clientWidth || 800, h = container.clientHeight || 500;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111209);
+  const camera = new THREE.PerspectiveCamera(30, w / h, 0.1, 400);  // narrow lens: little edge distortion on wide screens
+  camera.position.set(...cameraPos);                  // only the viewing direction matters: fit() sets the distance
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  container.appendChild(renderer.domElement);
+  renderer.domElement.setAttribute('aria-hidden', 'true');
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(...target);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.rotateSpeed = 0.4; controls.zoomSpeed = 10; controls.minDistance = 4; controls.maxDistance = 160;
+  controls.zoomToCursor = true;                       // scroll zooms towards the point under the mouse, not the centre
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.65); sun.position.set(5, 10, 7); scene.add(sun);
+  scene.add(new THREE.GridHelper(gridSize, gridSize, 0x2c2d24, 0x1c1d16));
+  const group = new THREE.Group(); scene.add(group);
+  const labels = new CSS2DRenderer();
+  labels.setSize(w, h); labels.domElement.className = 'labels3d';
+  container.appendChild(labels.domElement);
+  const s = { scene, camera, renderer, labels, controls, group, animId: null, ticks: [] };
+  // Frame the whole scene in whatever box the screen gives it, keeping the chosen viewing direction.
+  // Exact fit: for each corner of the scene's bounding box, the distance at which it lands inside the frame.
+  s.fit = (margin = 0.92) => {
+    const box = new THREE.Box3().setFromObject(group), center = box.getCenter(new THREE.Vector3());
+    const back = camera.position.clone().sub(controls.target).normalize();          // from the scene towards the camera
+    const right = new THREE.Vector3().crossVectors(camera.up, back).normalize();
+    const up = new THREE.Vector3().crossVectors(back, right);
+    const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * margin, th = tv * camera.aspect;
+    let d = 0;
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      const p = new THREE.Vector3(x, y, z).sub(center);
+      const toward = p.dot(back);
+      d = Math.max(d, toward + Math.abs(p.dot(right)) / th, toward + Math.abs(p.dot(up)) / tv);
+    }
+    controls.target.copy(center);
+    camera.position.copy(center).addScaledVector(back, d);
+    controls.update();
+    s.swayBase = null;                                  // the sway restarts from the new view
+  };
+  // Gentle sway: the view swings ±12° around where it is, so the scene reads as 3D without labels ever going behind
+  // it. Any drag or zoom pauses it; it picks up again 4 s after the last touch, from wherever the user left it.
+  s.swayBase = null; s.idleSince = performance.now() - 2500; s.busy = false;
+  controls.addEventListener('start', () => { s.busy = true; });
+  controls.addEventListener('end', () => { s.busy = false; s.idleSince = performance.now(); s.swayBase = null; });
+  const sph = new THREE.Spherical(), off = new THREE.Vector3();
+  s.sway = (now) => {
+    if (reduced || s.busy || now - s.idleSince < 4000) return;
+    off.copy(camera.position).sub(controls.target); sph.setFromVector3(off);
+    if (s.swayBase === null) { s.swayBase = sph.theta; s.swayT0 = now; }
+    sph.theta = s.swayBase + 0.21 * Math.sin((now - s.swayT0) / 1000 * 0.32);
+    off.setFromSpherical(sph); camera.position.copy(controls.target).add(off);
+  };
+  s.resize = () => {
+    const w2 = container.clientWidth, h2 = container.clientHeight;
+    if (!w2 || !h2) return;
+    renderer.setSize(w2, h2); labels.setSize(w2, h2); camera.aspect = w2 / h2; camera.updateProjectionMatrix();
+    if (s.fitted) s.fit();
+  };
+  window.addEventListener('resize', s.resize);
+  // Zoom buttons: one click = a clear step (25%); Fit puts the whole scene back in view.
+  const zoomBy = (f) => {
+    const off = camera.position.clone().sub(controls.target).multiplyScalar(f);
+    off.setLength(Math.min(controls.maxDistance, Math.max(controls.minDistance, off.length())));
+    camera.position.copy(controls.target).add(off); controls.update();
+  };
+  const bar = document.createElement('div'); bar.className = 'zoom3d';
+  [['+', 'Zoom in', () => zoomBy(0.75)], ['−', 'Zoom out', () => zoomBy(1.33)], ['Fit', 'Fit the whole scene', () => s.fit()]].forEach(([t, label, act]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.title = label; b.setAttribute('aria-label', label);
+    b.addEventListener('click', act); bar.appendChild(b);
+  });
+  container.appendChild(bar);
+  container.classList.add('ready');
+  return s;
+}
+
+function hex(c) { return '#' + c.toString(16).padStart(6, '0'); }
+
+// Labels are HTML (CSS2DRenderer), so the text is as sharp as the rest of the page and never covers a block:
+// the label's bottom edge sits on its anchor point just above the box.
+function makeTextSprite(text, color, size = 20) {
+  const [title, ...rest] = String(text).split('\n');
+  const outer = document.createElement('div');
+  const box = document.createElement('div');
+  box.className = 'lbl3d' + (size < 19 ? ' small' : '');
+  box.style.setProperty('--c', color);
+  const b = document.createElement('b'); b.textContent = title; box.appendChild(b);
+  if (rest.length) { const i = document.createElement('i'); i.textContent = rest.join(' '); box.appendChild(i); }
+  outer.appendChild(box);
+  return new CSS2DObject(outer);
+}
+
+function addBox(group, b) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d),
+    new THREE.MeshStandardMaterial({ color: b.color, transparent: (b.opacity ?? 1) < 1, opacity: b.opacity ?? 1,
+      depthWrite: (b.opacity ?? 1) >= 1,             // see-through panels tint what is behind them, never cut it out
+      emissive: b.color, emissiveIntensity: 0.12 }));
+  mesh.position.set(b.x, b.y, b.z); group.add(mesh);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 }));
+  edges.position.copy(mesh.position); group.add(edges);
+  if (b.label) { const spr = makeTextSprite(b.label, hex(b.color), b.fontSize || 20); spr.position.set(b.x, b.y + b.h / 2 + (b.lift ?? 0.2), b.z); group.add(spr); }
+  return mesh;
+}
+
+function boxOf(b, pad = 0) {
+  return new THREE.Box3(new THREE.Vector3(b.x - b.w / 2 - pad, b.y - b.h / 2 - pad, b.z - b.d / 2 - pad),
+                        new THREE.Vector3(b.x + b.w / 2 + pad, b.y + b.h / 2 + pad, b.z + b.d / 2 + pad));
+}
+const centre = (b) => new THREE.Vector3(b.x, b.y, b.z);
+// The point where a line coming from `from` first touches block b: the face that looks towards `from`.
+function facePoint(b, from) {
+  return new THREE.Ray(from.clone(), centre(b).sub(from).normalize()).intersectBox(boxOf(b), new THREE.Vector3()) || centre(b);
+}
+function segmentHits(A, B, box) {
+  const hit = new THREE.Ray(A.clone(), B.clone().sub(A).normalize()).intersectBox(box, new THREE.Vector3());
+  return !!hit && hit.distanceTo(A) < A.distanceTo(B) - 1e-3;
+}
+// Links join block faces. A link is straight unless another block sits in its path (checked, not guessed); then it
+// leaves the top of one block and arcs 0.7 above the tallest blocker to the top of the other. It never enters a block.
+function linkCurve(a, b, others) {
+  const A = facePoint(a, centre(b)), B = facePoint(b, centre(a));
+  const blockers = others.filter(o => segmentHits(A, B, boxOf(o, 0.15)));
+  if (!blockers.length) return new THREE.LineCurve3(A, B);
+  const top = (o) => o.y + o.h / 2;
+  const P = new THREE.Vector3(a.x, top(a), a.z), Q = new THREE.Vector3(b.x, top(b), b.z);
+  const peak = Math.max(top(a), top(b), ...blockers.map(top)) + 0.7;
+  const mid = P.clone().add(Q).multiplyScalar(0.5);
+  mid.y = 2 * peak - (P.y + Q.y) / 2;                  // a quadratic curve reaches (P + 2M + Q) / 4 at its middle
+  return new THREE.QuadraticBezierCurve3(P, mid, Q);
+}
+// A path made of straight pieces, for routes that turn corners (slide 15).
+function polyline(points) {
+  const path = new THREE.CurvePath();
+  for (let i = 1; i < points.length; i++) path.add(new THREE.LineCurve3(new THREE.Vector3(...points[i - 1]), new THREE.Vector3(...points[i])));
+  return path;
+}
+// Links are thin lit tubes, not lines: WebGL draws lines one pixel wide, which reads as faint on large screens.
+function addLink(s, curve, color, pulse, dashed) {
+  if (dashed) {
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(40)),
+      new THREE.LineDashedMaterial({ color, dashSize: 0.3, gapSize: 0.2 }));
+    line.computeLineDistances(); s.group.add(line);
+  } else {
+    const straight = curve.isLineCurve3;
+    s.group.add(new THREE.Mesh(new THREE.TubeGeometry(curve, straight ? 1 : 64, 0.031, 8, false),
+      new THREE.MeshBasicMaterial({ color })));
+  }
+  // pulse: 'one' = data flows one way (one coloured dot, from first block to second);
+  //        'both' = request and reply (coloured dot goes out from the caller, white dot comes back).
+  if (pulse && !reduced) {
+    const phase = Math.random();
+    const out = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), new THREE.MeshBasicMaterial({ color }));
+    s.group.add(out);
+    s.ticks.push(t => { out.position.copy(curve.getPointAt((t * 0.3 + phase) % 1)); });
+    if (pulse === 'both') {
+      const back = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      s.group.add(back);
+      s.ticks.push(t => { back.position.copy(curve.getPointAt(1 - ((t * 0.3 + phase + 0.5) % 1))); });
+    }
+  }
+}
+
+// The layout stretches sideways to match the box it is shown in (blocks keep their size, the gaps grow), so a wide
+// screen gets a wide, airy diagram instead of a small one in the middle.
+function boxScene(cam, target, boxes, links = [], gridSize, spread = 1) {
+  return (container) => {
+    const aspect = (container.clientWidth || 800) / (container.clientHeight || 500);
+    const fx = Math.min(2.6, Math.max(1, aspect / 1.4)) * spread;
+    const laid = boxes.map(b => ({ ...b, x: b.x * fx, z: b.z * spread }));
+    const s = makeSceneOn(container, cam, target, Math.round(gridSize * fx));
+    laid.forEach(b => addBox(s.group, b));
+    links.forEach(([i, j, color, pulse, dashed]) =>
+      addLink(s, linkCurve(laid[i], laid[j], laid.filter((_, k) => k !== i && k !== j)), color ?? C.grey, pulse, dashed));
+    return s;
+  };
+}
+
+/* Radar's extra colours: brand amber, teal for the database, slate for outside sources, the site's breaking red */
+const T = { brand: 0xf5a623, teal: 0x4fd1c5, slate: 0x7d8fa3, brk: 0xff6b5b };
+
+/* Slide 2: the system */
+const sys = [
+  // Top row: the request path and the local model web alone uses. Middle row: what both containers use, so every
+  // link to it fans straight up or down and none cross. Bottom row: batch's own sources and its heartbeat.
+  { x: -15, y: 0.4, z: -5,  w: 1.6, h: 0.8, d: 1.3, color: C.white,  label: 'Visitor\nbrowser' },
+  { x: -9,  y: 0.5, z: -5,  w: 1.8, h: 1.0, d: 1.4, color: C.white,  label: 'Reverse proxy\nTLS, one host' },
+  { x: -2,  y: 0.8, z: -5,  w: 2.4, h: 1.6, d: 1.8, color: T.brand,  label: 'radar-web\npages · Ask · agent' },
+  { x: -2,  y: 0.7, z: 5,   w: 2.4, h: 1.4, d: 1.8, color: C.blue,   label: 'radar-batch\ncollectors · digest' },
+  { x: -10, y: 0.5, z: 0,   w: 2.0, h: 1.0, d: 1.6, color: T.teal,   label: 'SQLite (WAL)\nreleases · diffs · runs' },
+  { x: -4,  y: 0.5, z: 0,   w: 2.0, h: 1.0, d: 1.6, color: C.orange, label: 'Release store\nSHA-256 manifest' },
+  { x: 2,   y: 0.6, z: 0,   w: 2.0, h: 1.2, d: 1.6, color: C.purple, label: 'OpenRouter\nmodel provider' },
+  { x: 8,   y: 0.4, z: 0,   w: 1.8, h: 0.8, d: 1.4, color: C.grey,   label: 'GitHub API\nread-only token' },
+  { x: 6,   y: 0.5, z: -5,  w: 1.8, h: 1.0, d: 1.4, color: C.green,  label: 'Ollama\nDocker network only' },
+  { x: 7,   y: 0.4, z: 5,   w: 2.2, h: 0.8, d: 1.4, color: T.slate,  label: 'Sources\nPyPI · npm · OSV · arXiv · HN' },
+  { x: -2,  y: 0.3, z: 9.5, w: 1.6, h: 0.6, d: 1.2, color: C.grey,   label: 'Uptime monitor\nheartbeats' },
+];
+// [from, to, colour, flow, dashed]. 'both' = request and reply, written caller first; 'one' = one-way data.
+const sysLinks = [
+  [0, 1, C.white, 'both'], [1, 2, T.brand, 'both'],                          // visitor <-> proxy <-> radar-web
+  [2, 4, T.teal, 'both'], [3, 4, T.teal, 'both'],                            // both read and write SQLite
+  [5, 2, C.orange, 'one'], [3, 5, C.orange, 'one'],                          // batch publishes; web reads releases
+  [2, 6, C.purple, 'both'], [3, 6, C.purple, 'both'],                        // agent models; digest notes
+  [2, 7, C.grey, 'both'], [3, 7, C.grey, 'both'],                            // repo snapshots; GitHub releases
+  [2, 8, C.green, 'both'],                                                   // Ask Radar answers and embeddings
+  [3, 9, T.slate, 'both'],                                                   // registries, OSV, arXiv, HN, MCP
+  [3, 10, C.grey, 'one']];                                                   // heartbeat out
+
+/* Slide 15: four layers as floating plates */
+function layersScene(container) {
+  const s = makeSceneOn(container, [9, 9, 12], [0, 3, 0], 14);
+  const plates = [[6.6, C.white, 'Edge'], [4.4, T.brand, 'App'], [2.2, T.teal, 'Data'], [0, C.purple, 'External']];
+  plates.forEach(([y, color]) => addBox(s.group, { x: 0, y, z: 0, w: 9, h: 0.08, d: 4.2, color, opacity: 0.16 }));
+  const chips = [
+    [-2.2, 6.6, C.white, 'Proxy\nTLS · HSTS · CSP'], [2.2, 6.6, C.white, 'Visitor'],
+    [-2.2, 4.4, T.brand, 'radar-web\nread-only FS'], [2.2, 4.4, C.blue, 'radar-batch\nleased jobs'],
+    [-2.2, 2.2, T.teal, 'SQLite\nWAL · backups'], [2.2, 2.2, C.orange, 'Releases\nhash-checked'],
+    [-2.2, 0, C.purple, 'Models\nOpenRouter · Ollama'], [2.2, 0, T.slate, 'Sources\nGitHub · PyPI · npm · OSV'],
+  ];
+  chips.forEach(([x, y, color, label]) => addBox(s.group, { x, y: y + 0.3, z: 0, w: 2.6, h: 0.5, d: 1.6, color, label, fontSize: 19, lift: 0.15 }));
+  // One path per layer step; slide 2 shows every link. Chip faces: top = plate + 0.55, bottom = plate + 0.05,
+  // sides = x ± 1.3, front = z 0.8. The long links leave a front face, run down in front of the layer they skip, and
+  // enter the target's front face.
+  const routes = [
+    [[0.9, 6.9, 0], [-0.9, 6.9, 0]],                                           // visitor -> proxy
+    [[-2.2, 6.65, 0], [-2.2, 4.95, 0]],                                        // proxy -> radar-web
+    [[-2.2, 4.45, 0], [-2.2, 2.75, 0]],                                        // radar-web -> SQLite
+    [[2.2, 4.45, 0], [2.2, 2.75, 0]],                                          // radar-batch -> releases
+    [[-1.4, 4.7, 0.8], [-1.4, 4.7, 1.5], [-1.4, 0.3, 1.5], [-1.4, 0.3, 0.8]],  // radar-web -> models
+    [[3.0, 4.7, 0.8], [3.0, 4.7, 1.5], [3.0, 0.3, 1.5], [3.0, 0.3, 0.8]],      // radar-batch -> sources
+  ];
+  const flows = ['both', 'both', 'both', 'one', 'both', 'both'];           // only publishing a release is one-way
+  routes.forEach((pts, i) => addLink(s, polyline(pts), [C.white, T.brand, T.teal, C.orange, C.purple, T.slate][i], flows[i]));
+  return s;
+}
+
+/* Slide 4: the digest pipeline (data flows one way, collectors to the published release) */
+const pipe = [
+  { x: -12, y: 0.4, z: -4.5, w: 2.0, h: 0.8, d: 1.3, color: C.white,  label: 'collect\nevery 3 h' },
+  { x: -12, y: 0.4, z: -1.5, w: 2.0, h: 0.8, d: 1.3, color: C.blue,   label: 'apisurface\nevery 6 h' },
+  { x: -12, y: 0.4, z: 1.5,  w: 2.0, h: 0.8, d: 1.3, color: C.red,    label: 'advisories\nevery 6 h' },
+  { x: -12, y: 0.4, z: 4.5,  w: 2.0, h: 0.8, d: 1.3, color: T.slate,  label: 'apibackfill\ndaily' },
+  { x: -5,  y: 0.6, z: 0,    w: 2.4, h: 1.2, d: 1.8, color: T.teal,   label: 'SQLite\nreleases · diffs · advisories' },
+  { x: 1,   y: 0.7, z: 0,    w: 2.0, h: 1.4, d: 1.6, color: T.brand,  label: 'digest\nnightly' },
+  { x: 6,   y: 0.7, z: 0,    w: 2.0, h: 1.4, d: 1.6, color: C.green,  label: 'cluster + score\ncode' },
+  { x: 11,  y: 0.7, z: 0,    w: 2.0, h: 1.4, d: 1.6, color: C.purple, label: 'notes\nmodel, checked' },
+  { x: 16,  y: 0.8, z: 0,    w: 2.2, h: 1.6, d: 1.8, color: C.orange, label: 'release\nCURRENT flips' },
+];
+const pipeLinks = [[0, 4, C.white, 'one'], [1, 4, C.blue, 'one'], [2, 4, C.red, 'one'], [3, 4, T.slate, 'one'],
+  [4, 5, T.teal, 'one'], [5, 6, T.brand, 'one'], [6, 7, C.green, 'one'], [7, 8, C.purple, 'one']];
+
+/* Slide 9: the upgrade agent graph (state flows one way; dashed = early exits) */
+const agent = [
+  { x: -10.5, y: 0.4, z: 0, w: 2.0, h: 0.8, d: 1.6, color: C.white,  label: 'fetch_inputs\ncode' },
+  { x: -7.5,  y: 0.5, z: 0, w: 2.0, h: 1.0, d: 1.6, color: T.slate,  label: 'parse_deps\ncode' },
+  { x: -4.5,  y: 0.6, z: 0, w: 2.0, h: 1.2, d: 1.6, color: T.teal,   label: 'ground\ncode' },
+  { x: -1.5,  y: 0.7, z: 0, w: 2.0, h: 1.4, d: 1.6, color: C.blue,   label: 'index_code\ncode' },
+  { x: 1.5,   y: 0.8, z: 0, w: 2.0, h: 1.6, d: 1.6, color: C.purple, label: 'plan\nmodel' },
+  { x: 4.5,   y: 0.9, z: 0, w: 2.0, h: 1.8, d: 1.6, color: C.purple, label: 'investigate\nmodel, loops' },
+  { x: 7.5,   y: 1.0, z: 0, w: 2.0, h: 2.0, d: 1.6, color: C.green,  label: 'verify\ncode' },
+  { x: 10.5,  y: 1.1, z: 0, w: 2.0, h: 2.2, d: 1.6, color: T.brand,  label: 'report\nmodel + code' },
+];
+const agentLinks = [[0, 1, C.white, 'one'], [1, 2, T.slate, 'one'], [2, 3, T.teal, 'one'], [3, 4, C.blue, 'one'],
+  [4, 5, C.purple, 'one'], [5, 6, C.purple, 'one'], [6, 7, C.green, 'one'],
+  [3, 7, C.red, false, true],                                                // no candidates: straight to report
+  [4, 6, C.red, false, true]];                                               // empty plan or budget spent: to verify
+
+/* Every tracked version step (upgrade.json, generated 12 Nov 2026 00:02 UTC), most breaking changes first.
+   [name, ecosystem, steps, [[step index, versions, breaking, deprecations], ...]]; unlisted steps have neither. */
+const LANES = [
+  ["llama-index-core", "pypi", 2, [[0, "0.13.6 → 0.14.24", 307, 3]]],
+  ["crewai", "pypi", 19, [[0, "1.14.7 → 1.15.22", 35, 0], [2, "1.15.23 → 1.15.24", 1, 0], [7, "1.15.28 → 1.15.29", 7, 0], [9, "1.15.30 → 1.15.31", 2, 0]]],
+  ["anthropic", "pypi", 18, [[4, "1.12.1 → 1.13.0", 4, 0], [5, "1.13.0 → 1.14.0", 6, 0], [9, "1.17.0 → 2.0.0", 14, 0], [13, "2.3.0 → 2.4.0", 8, 0], [14, "2.4.0 → 2.5.0", 2, 0], [16, "2.6.0 → 2.7.0", 4, 0]]],
+  ["autogen-agentchat", "pypi", 2, [[0, "0.6.4 → 0.7.4", 18, 0]]],
+  ["openai", "pypi", 30, [[1, "3.23.0 → 3.24.0", 0, 2], [2, "3.24.0 → 3.25.0", 2, 0], [4, "3.26.0 → 3.26.1", 11, 0], [18, "3.37.0 → 3.38.0", 0, 4], [21, "3.40.0 → 3.41.0", 0, 2]]],
+  ["@anthropic-ai/sdk", "npm", 18, [[9, "0.137.0 → 1.0.0", 6, 0]]],
+  ["mcp", "pypi", 2, [[0, "2.1.1 → 2.2.0", 1, 0]]],
+  ["openai", "npm", 30, []],
+  ["google-genai", "pypi", 12, []],
+  ["langchain", "pypi", 10, []],
+  ["langgraph", "pypi", 9, []],
+  ["@modelcontextprotocol/sdk", "npm", 3, []],
+  ["ollama", "pypi", 2, []],
+];
+const breaksOf = (lane) => lane[3].reduce((n, m) => n + m[2], 0);
+const laneName = (lane) => lane[0] + (lane[1] === 'npm' && !lane[0].startsWith('@') ? ' (npm)' : '');
+// A label whose right edge sits on its anchor, for names at the left end of a row.
+function rightAligned(sprite) { sprite.element.firstChild.style.transform = 'translate(-50%, -50%)'; return sprite; }
+
+/* Slide 1: the radar scope. One blip per tracked package; the sweep lights each blip as it passes. */
+function scopeScene(container) {
+  const s = makeSceneOn(container, [0, 8, 8.5], [0, 0.6, 0], 2);
+  const fit = s.fit; s.fit = (m = 1.12) => fit(m);       // a round disc leaves its bounding box's corners empty
+  const narrow = (container.clientWidth || 800) < 480, R = 6;   // names around a ring need less width than rows
+  const flat = (geo, color, opacity, y) => {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide }));
+    m.rotation.x = -Math.PI / 2; m.position.y = y; s.group.add(m); return m;
+  };
+  flat(new THREE.CircleGeometry(R, 96), 0x14150f, 0.95, 0.01);
+  [2, 4, 6].forEach(r => flat(new THREE.RingGeometry(r - 0.025, r + 0.025, 128), T.brand, 0.35, 0.02));
+  flat(new THREE.PlaneGeometry(2 * R, 0.035), T.brand, 0.18, 0.02);
+  flat(new THREE.PlaneGeometry(0.035, 2 * R), T.brand, 0.18, 0.02);
+  // The sweep covers angles [a, a + 0.7] on the disc (angle measured from +x towards -z, as seen from above).
+  const sweep = new THREE.Group(); s.group.add(sweep);
+  const wedge = new THREE.Mesh(new THREE.CircleGeometry(R, 48, 0, 0.7),
+    new THREE.MeshBasicMaterial({ color: T.brand, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }));
+  wedge.rotation.x = -Math.PI / 2; wedge.position.y = 0.03; sweep.add(wedge);
+  const blips = [];
+  ['pypi', 'npm'].forEach(eco => {
+    const ring = LANES.filter(l => l[1] === eco), r = eco === 'pypi' ? 5 : 2.8;
+    ring.forEach((lane, i) => {
+      const phi = (i + 0.5) / ring.length * Math.PI * 2 + (eco === 'npm' ? 0.5 : 0);
+      const b = breaksOf(lane), h = 0.12 + 0.42 * Math.log2(1 + b), x = r * Math.cos(phi), z = -r * Math.sin(phi);
+      const mat = new THREE.MeshStandardMaterial({ color: b ? T.brk : 0x6b5a35, emissive: b ? T.brk : 0x6b5a35, emissiveIntensity: 0.15 });
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, h, 20), mat);
+      m.position.set(x, h / 2, z); s.group.add(m); blips.push({ mat, phi });
+      if (!narrow) {
+        const tag = makeTextSprite(`${laneName(lane)}\n${b} breaking in ${lane[2]} steps`, b ? '#ff6b5b' : '#8c8878', 16);
+        tag.position.set(x, h + 0.15, z); s.group.add(tag);
+      }
+    });
+  });
+  if (!reduced) s.ticks.push(t => {
+    const a = (t * 0.9) % (Math.PI * 2); sweep.rotation.y = a;
+    blips.forEach(p => {                                 // bright as the leading edge passes, then fading
+      const since = ((a + 0.7 - p.phi) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      p.mat.emissiveIntensity = 0.15 + 0.9 * Math.max(0, 1 - since / 2.5);
+    });
+  });
+  return s;
+}
+
+/* Slide 7: every tracked version step, one row per package, newest on the right */
+function timelineScene(container) {
+  const narrow = (container.clientWidth || 800) < 700;
+  // Phones draw only the packages with breaking steps (the next slide's table has all 13), so each row gets room.
+  const lanes = narrow ? LANES.filter(l => breaksOf(l) > 0) : LANES;
+  // A steep view and wide rows, so each tower stands inside its own row's band instead of in front of the next row.
+  const sx = 0.55, sz = narrow ? 1.9 : 1.45, maxSteps = Math.max(...lanes.map(l => l[2]));
+  const s = makeSceneOn(container, narrow ? [0, 14, 9] : [0, 13, 11], [0, 0, 0], 24);
+  const right = (maxSteps - 1) * sx / 2;
+  lanes.forEach((lane, li) => {
+    const [, eco, steps, marks] = lane, z = (li - (lanes.length - 1) / 2) * sz, at = new Map(marks.map(m => [m[0], m]));
+    for (let i = 0; i < steps; i++) {
+      const m = at.get(i), b = m ? m[2] : 0, d = m ? m[3] : 0;
+      const h = b ? 0.25 + 0.42 * Math.log2(1 + b) : 0.1;
+      addBox(s.group, { x: right - (steps - 1 - i) * sx, y: h / 2, z, w: 0.4, h, d: 0.62,
+        color: b ? T.brk : d ? T.brand : 0x4a4c40,
+        label: b && !narrow ? `${b}\n${laneName(lane)} ${m[1]}` : null, fontSize: 17, lift: 0.08 });
+    }
+    const name = narrow ? lane[0].replace('@anthropic-ai/sdk', 'anthropic sdk').replace(/-(agentchat|core)$/, '') : laneName(lane);
+    const tag = rightAligned(makeTextSprite(name, eco === 'npm' ? '#58a6ff' : '#f5a623', 16));
+    tag.position.set(-right - 0.45, 0.1, z); s.group.add(tag);
+    const first = right - (steps - 1) * sx - 0.2, len = first - (-right - 0.3);   // a rail from the name to the row's first tile
+    if (len > 0.05) addBox(s.group, { x: (first + -right - 0.3) / 2, y: 0.02, z, w: len, h: 0.03, d: 0.06, color: eco === 'npm' ? C.blue : T.brand, opacity: 0.45 });
+  });
+  // An invisible block where the row names sit, so the fit leaves room for them.
+  const room = narrow ? 5 : 3.2;
+  const spacer = new THREE.Mesh(new THREE.BoxGeometry(room, 0.1, 0.1), new THREE.MeshBasicMaterial({ visible: false }));
+  spacer.position.set(-right - room / 2 - 0.3, 0, 0); s.group.add(spacer);
+  return s;
+}
+
+const SCENES = {
+  1: scopeScene,
+  2: boxScene([-2, 15, 13], [-2, 0, 2], sys, sysLinks, 34),
+  4: boxScene([2, 14, 13], [2, 0, 0], pipe, pipeLinks, 36),
+  7: timelineScene,
+  9: boxScene([-3, 10, 14], [0, 1, 0], agent, agentLinks, 28),
+  15: layersScene,
+};
+
+function start(s) {
+  if (!s || s.animId !== null) return;
+  s.resize();
+  const loop = () => {
+    s.animId = requestAnimationFrame(loop);
+    s.sway(performance.now());
+    s.controls.update();
+    const t = performance.now() / 1000; s.ticks.forEach(f => f(t));
+    s.renderer.render(s.scene, s.camera);
+    s.labels.render(s.scene, s.camera);
+  };
+  loop();
+}
+function stop(s) { if (s && s.animId !== null) { cancelAnimationFrame(s.animId); s.animId = null; } }
+
+function show(n) {
+  Object.entries(scenes).forEach(([k, s]) => (+k === n ? start(s) : stop(s)));
+  if (!scenes[n] && SCENES[n]) {
+    const el = document.getElementById('canvas-' + n);
+    if (el) { scenes[n] = SCENES[n](el); start(scenes[n]); scenes[n].fit(); scenes[n].fitted = true; }
+  }
+}
+window.addEventListener('slidechange', (e) => show(e.detail));
+const ready = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+ready.then(() => show(window.deckSlide()));
+</script>
+
+</body>
+</html>
