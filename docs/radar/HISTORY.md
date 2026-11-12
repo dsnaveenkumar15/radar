@@ -24,7 +24,7 @@ detail.
 | 2026-10-09 | Own architecture and history documents |
 | 2026-10-11 | The private report lists recent runs and batch jobs (metadata only) for the console |
 | 2026-11-11 | `langgraph.prebuilt` reported as moved to the `langgraph-prebuilt` package (notable, not breaking); old releases the backfill cannot read are recorded once and not downloaded again; exact agent budget totals across threads; certifi and pip floors in the image |
-| 2026-11-12 | Engineering explainer deck (`docs/radar/explainer.html`): 18 slides in Radar's own look, with 3D views of the system, digest pipeline, agent graph and layers, a radar scope of the tracked packages, a 3D timeline of all 157 tracked version steps, and a recorded agent run; every number checked against the code and live data |
+| 2026-11-12 | Engineering explainer deck (`docs/radar/explainer.html`): 18 slides in Radar's own look, with 3D views of the system, digest pipeline, agent graph and untrusted input (read, never run), a radar scope of the tracked packages, a 3D timeline of all 157 tracked version steps, and a recorded agent run; every number checked against the code and live data |
 
 ## Open items
 

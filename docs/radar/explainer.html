@@ -582,20 +582,20 @@ ctx.gateway.budget.reserve(REPORT_SECONDS)
     </div>
   </section>
 
-  <!-- 15 — Layers -->
+  <!-- 15 — Untrusted input in 3D -->
   <section class="slide" data-slide="15">
-    <div class="slide-num">Defence in layers</div>
-    <h1 class="slide-title">Four layers, <span class="em">each with its own guard</span></h1>
+    <div class="slide-num">Untrusted input</div>
+    <h1 class="slide-title">Everything it reads is untrusted, <span class="em">nothing it reads runs</span></h1>
     <div class="split">
       <div class="canvas-wrap" id="canvas-15">
         <div class="canvas-wait">Loading the 3D view.</div>
-        <div class="canvas-hint">Top = closest to the visitor · white dot = reply · slide 2 has every link</div>
+        <div class="canvas-hint">Left: untrusted · middle: read, never run · right: what a visitor sees · one dot = data direction</div>
       </div>
       <div class="stack-col">
-        <div class="card" style="border-left:3px solid var(--grey)"><h3>Edge</h3><p>TLS, HSTS for a year, strict CSP with no inline code, <code class="k">frame-ancestors 'none'</code>. Per-IP limits: Ask Radar 10 a minute, error reports 5 a minute, agent runs per day.</p></div>
-        <div class="card green"><h3>App</h3><p>Non-root, read-only root filesystem, all Linux capabilities dropped, <code class="k">no-new-privileges</code>, CPU and memory limits, and a concurrency gate.</p></div>
-        <div class="card amber"><h3>Data</h3><p>SQLite in WAL mode with a nightly backup. Releases carry a SHA-256 manifest and web refuses a file whose hash does not match. A published digest is never rewritten; corrections are errata.</p></div>
-        <div class="card purple"><h3>External</h3><p>OpenRouter with data collection denied, except one free model allowed only for public-repository runs, never for pasted files. Ollama only on the Docker network. GitHub through a token that can only read public code.</p></div>
+        <div class="card red"><h3>Untrusted input</h3><p>Packages are parsed with <code class="k">ast</code> and tree-sitter, never imported. Release notes are fenced and labelled in every prompt. Repository code is read only from the fetched snapshot, never executed, and discarded after the run.</p></div>
+        <div class="card green"><h3>Checked before anyone sees it</h3><p>A finding counts only if its quote is on the cited line. Releases carry a SHA-256 manifest and web refuses a file whose hash does not match. A published digest is never rewritten; corrections are errata.</p></div>
+        <div class="card" style="border-left:3px solid var(--grey)"><h3>Edge and container</h3><p>TLS, HSTS for a year, strict CSP, <code class="k">frame-ancestors 'none'</code>; per-IP limits on Ask Radar, error reports and agent runs. Non-root, read-only root filesystem, capabilities dropped, <code class="k">no-new-privileges</code>.</p></div>
+        <div class="card purple"><h3>Outside services</h3><p>OpenRouter with data collection denied, except one free model for public-repository runs only. Ollama only on the Docker network; GitHub through a read-only token. A pasted dependency file never leaves the browser.</p></div>
       </div>
     </div>
   </section>
@@ -884,7 +884,7 @@ function linkCurve(a, b, others) {
   mid.y = 2 * peak - (P.y + Q.y) / 2;                  // a quadratic curve reaches (P + 2M + Q) / 4 at its middle
   return new THREE.QuadraticBezierCurve3(P, mid, Q);
 }
-// A path made of straight pieces, for routes that turn corners (slide 15).
+// A path made of straight pieces, for routes that turn corners.
 function polyline(points) {
   const path = new THREE.CurvePath();
   for (let i = 1; i < points.length; i++) path.add(new THREE.LineCurve3(new THREE.Vector3(...points[i - 1]), new THREE.Vector3(...points[i])));
@@ -961,31 +961,28 @@ const sysLinks = [
   [3, 9, T.slate, 'both'],                                                   // registries, OSV, arXiv, HN, MCP
   [3, 10, C.grey, 'one']];                                                   // heartbeat out
 
-/* Slide 15: four layers as floating plates */
-function layersScene(container) {
-  const s = makeSceneOn(container, [9, 9, 12], [0, 3, 0], 14);
-  const plates = [[6.6, C.white, 'Edge'], [4.4, T.brand, 'App'], [2.2, T.teal, 'Data'], [0, C.purple, 'External']];
-  plates.forEach(([y, color]) => addBox(s.group, { x: 0, y, z: 0, w: 9, h: 0.08, d: 4.2, color, opacity: 0.16 }));
-  const chips = [
-    [-2.2, 6.6, C.white, 'Proxy\nTLS · HSTS · CSP'], [2.2, 6.6, C.white, 'Visitor'],
-    [-2.2, 4.4, T.brand, 'radar-web\nread-only FS'], [2.2, 4.4, C.blue, 'radar-batch\nleased jobs'],
-    [-2.2, 2.2, T.teal, 'SQLite\nWAL · backups'], [2.2, 2.2, C.orange, 'Releases\nhash-checked'],
-    [-2.2, 0, C.purple, 'Models\nOpenRouter · Ollama'], [2.2, 0, T.slate, 'Sources\nGitHub · PyPI · npm · OSV'],
+/* Slide 15: untrusted input. Three zones; data flows left to right and nothing from the left zone is ever executed. */
+function untrustedScene(container) {
+  const s = makeSceneOn(container, [0, 13, 11], [0, 0, 0.5], 34);
+  [[-9.5, T.brk, 'Untrusted input'], [0, C.blue, 'Read, never run'], [9.5, T.brand, 'What a visitor sees']].forEach(([x, color, name]) => {
+    addBox(s.group, { x, y: 0.02, z: 0.25, w: 7, h: 0.04, d: 10.5, color, opacity: 0.1 });
+    if ((container.clientWidth || 800) >= 700) { const tag = makeTextSprite(name, hex(color), 16); tag.position.set(x, 0.1, -6.3); s.group.add(tag); }  // phones: names would collide
+  });
+  const n = [
+    { x: -9.5, y: 0.4, z: -3.5, w: 2.4, h: 0.8, d: 1.4, color: T.slate,  label: 'Package archives\nPyPI · npm' },
+    { x: -9.5, y: 0.4, z: 0,    w: 2.4, h: 0.8, d: 1.4, color: T.slate,  label: 'Release notes, feeds\nGitHub · arXiv · HN' },
+    { x: -9.5, y: 0.4, z: 3.5,  w: 2.4, h: 0.8, d: 1.4, color: T.slate,  label: 'Repository snapshot\nfetched for one run' },
+    { x: 0,    y: 0.6, z: -3.5, w: 2.4, h: 1.2, d: 1.6, color: C.blue,   label: 'Parsers\nast · tree-sitter' },
+    { x: 0,    y: 0.6, z: 0,    w: 2.4, h: 1.2, d: 1.6, color: C.purple, label: 'Models\ninput fenced, labelled' },
+    { x: 0,    y: 0.6, z: 3.5,  w: 2.4, h: 1.2, d: 1.6, color: C.green,  label: 'Verifier\nquote on the cited line' },
+    { x: 9.5,  y: 0.7, z: -1.75, w: 2.4, h: 1.4, d: 1.8, color: T.brand, label: 'Published release\nSHA-256 checked' },
+    { x: 9.5,  y: 0.7, z: 3.5,  w: 2.4, h: 1.4, d: 1.8, color: T.brand,  label: 'Agent report\nverified findings only' },
   ];
-  chips.forEach(([x, y, color, label]) => addBox(s.group, { x, y: y + 0.3, z: 0, w: 2.6, h: 0.5, d: 1.6, color, label, fontSize: 19, lift: 0.15 }));
-  // One path per layer step; slide 2 shows every link. Chip faces: top = plate + 0.55, bottom = plate + 0.05,
-  // sides = x ± 1.3, front = z 0.8. The long links leave a front face, run down in front of the layer they skip, and
-  // enter the target's front face.
-  const routes = [
-    [[0.9, 6.9, 0], [-0.9, 6.9, 0]],                                           // visitor -> proxy
-    [[-2.2, 6.65, 0], [-2.2, 4.95, 0]],                                        // proxy -> radar-web
-    [[-2.2, 4.45, 0], [-2.2, 2.75, 0]],                                        // radar-web -> SQLite
-    [[2.2, 4.45, 0], [2.2, 2.75, 0]],                                          // radar-batch -> releases
-    [[-1.4, 4.7, 0.8], [-1.4, 4.7, 1.5], [-1.4, 0.3, 1.5], [-1.4, 0.3, 0.8]],  // radar-web -> models
-    [[3.0, 4.7, 0.8], [3.0, 4.7, 1.5], [3.0, 0.3, 1.5], [3.0, 0.3, 0.8]],      // radar-batch -> sources
-  ];
-  const flows = ['both', 'both', 'both', 'one', 'both', 'both'];           // only publishing a release is one-way
-  routes.forEach((pts, i) => addLink(s, polyline(pts), [C.white, T.brand, T.teal, C.orange, C.purple, T.slate][i], flows[i]));
+  n.forEach(b => addBox(s.group, b));
+  const link = (i, j, color) => addLink(s, linkCurve(n[i], n[j], n.filter((_, k) => k !== i && k !== j)), color, 'one');
+  link(0, 3, T.slate); link(1, 4, T.slate); link(2, 4, T.slate); link(2, 5, T.slate);   // read, never imported or run
+  link(4, 5, C.purple);                                                                   // findings go to the verifier
+  link(3, 6, C.blue); link(4, 6, C.purple); link(5, 7, C.green);                          // diffs and notes; verified findings
   return s;
 }
 
@@ -1122,7 +1119,7 @@ const SCENES = {
   4: boxScene([2, 14, 13], [2, 0, 0], pipe, pipeLinks, 36),
   7: timelineScene,
   9: boxScene([-3, 10, 14], [0, 1, 0], agent, agentLinks, 28),
-  15: layersScene,
+  15: untrustedScene,
 };
 
 function start(s) {
