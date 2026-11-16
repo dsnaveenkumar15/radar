@@ -59,6 +59,13 @@ def packages(upgrade: dict) -> list[dict]:
     return rows
 
 
+def _note(row: dict) -> str:
+    """The breaking count covers every compared version (row["span"]); only the advisories are about the latest release."""
+    scope = f"{row['breaking']} breaking changes from {row['span']}" if row["span"] else "no versions compared"
+    n = row["advisories"]
+    return f"{scope}; {n} advisor{'y' if n == 1 else 'ies'} on the latest release"
+
+
 def sweep(rows: list[dict], size: int = 240) -> list[dict]:
     centre, reach = size / 2, size / 2 - 12
     points = []
@@ -67,7 +74,7 @@ def sweep(rows: list[dict], size: int = 240) -> list[dict]:
         r = reach * (LEVEL_RADIUS[row["level"]] + 0.05 * (i % 3 - 1))
         points.append({"key": row["key"], "label": row["key"].split(":", 1)[-1], "level": row["level"],
                        "x": round(centre + r * math.cos(angle), 1), "y": round(centre + r * math.sin(angle), 1),
-                       "note": f"{row['breaking']} breaking, {row['advisories']} advisories on the latest release"})
+                       "note": _note(row)})
     return points
 
 

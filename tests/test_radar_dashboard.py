@@ -38,6 +38,13 @@ def test_sweep_places_urgent_packages_nearer_the_centre_inside_the_dial():
     assert dash.sweep([]) == []
 
 
+def test_sweep_note_says_breaking_spans_the_compared_versions_and_advisories_are_on_latest():
+    points = {p["key"]: p for p in dash.sweep(dash.packages(UP), size=240)}
+    assert points["pypi:b"]["note"] == "3 breaking changes from 1.0.0 → 2.0.0; 0 advisories on the latest release"
+    assert points["pypi:a"]["note"] == "0 breaking changes from 1.0.0 → 1.1.0; 1 advisory on the latest release"
+    assert points["npm:c"]["note"] == "no versions compared; 0 advisories on the latest release"
+
+
 def test_activity_bars_are_oldest_first_and_scaled_to_the_busiest_day():
     index = {"digests": [{"date": "2026-10-03", "clusters": 4, "breaking": 2}, {"date": "2026-10-02", "clusters": 2, "breaking": 0},
                          {"date": "2026-10-01", "clusters": 0, "breaking": 0}]}
