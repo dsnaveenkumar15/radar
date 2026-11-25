@@ -1,0 +1,467 @@
+{
+ "note": "One labeller, the owner of the app. partly counts as not supported. Pass 2 hid the question; see docs/evaluation/ask.md.",
+ "pass1": [
+  {
+   "record": "full-rel03",
+   "stratum": "answerable",
+   "human": "supported",
+   "glm": "supported",
+   "local": "supported"
+  },
+  {
+   "record": "mcp01",
+   "stratum": "answerable",
+   "human": "unsupported",
+   "glm": "unsupported",
+   "local": "unsupported"
+  },
+  {
+   "record": "full-pap05",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "full-pap01",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "unsupported"
+  },
+  {
+   "record": "full-hn03",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "pap01",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "unsupported"
+  },
+  {
+   "record": "hn05",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "swap-pap04",
+   "stratum": "swap",
+   "human": "partly",
+   "glm": "unsupported",
+   "local": "unsupported"
+  },
+  {
+   "record": "full-mcp01",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "unsupported"
+  },
+  {
+   "record": "swap-rel03",
+   "stratum": "swap",
+   "human": "supported",
+   "glm": "unsupported",
+   "local": "supported"
+  },
+  {
+   "record": "full-rel02",
+   "stratum": "answerable",
+   "human": "supported",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "full-mcp02",
+   "stratum": "answerable",
+   "human": "supported",
+   "glm": "supported",
+   "local": "supported"
+  },
+  {
+   "record": "hn04",
+   "stratum": "answerable",
+   "human": "supported",
+   "glm": "supported",
+   "local": "supported"
+  },
+  {
+   "record": "swap-pap05",
+   "stratum": "swap",
+   "human": "partly",
+   "glm": "unsupported",
+   "local": "unsupported"
+  },
+  {
+   "record": "atk07",
+   "stratum": "attack",
+   "human": "supported",
+   "glm": "partly",
+   "local": "unsupported"
+  },
+  {
+   "record": "swap-pap03",
+   "stratum": "swap",
+   "human": "supported",
+   "glm": "unsupported",
+   "local": "unsupported"
+  },
+  {
+   "record": "pap09",
+   "stratum": "answerable",
+   "human": "unsupported",
+   "glm": "unsupported",
+   "local": "supported"
+  },
+  {
+   "record": "mcp04",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "hn03",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "unsupported"
+  },
+  {
+   "record": "full-atk07",
+   "stratum": "attack",
+   "human": "supported",
+   "glm": "supported",
+   "local": "supported"
+  },
+  {
+   "record": "full-rel06",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "pap05",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "full-hn05",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "unsupported"
+  },
+  {
+   "record": "swap-hn02",
+   "stratum": "swap",
+   "human": "unsupported",
+   "glm": "unsupported",
+   "local": "unsupported"
+  },
+  {
+   "record": "full-pap03",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "full-atk06",
+   "stratum": "attack",
+   "human": "partly",
+   "glm": "partly",
+   "local": "unsupported"
+  },
+  {
+   "record": "full-atk05",
+   "stratum": "attack",
+   "human": "supported",
+   "glm": "supported",
+   "local": "supported"
+  },
+  {
+   "record": "swap-pap10",
+   "stratum": "swap",
+   "human": "unsupported",
+   "glm": "unsupported",
+   "local": "unsupported"
+  },
+  {
+   "record": "full-mcp04",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "pap10",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "atk04",
+   "stratum": "attack",
+   "human": "unsupported",
+   "glm": "unsupported",
+   "local": "supported"
+  },
+  {
+   "record": "swap-hn05",
+   "stratum": "swap",
+   "human": "unsupported",
+   "glm": "unsupported",
+   "local": "unsupported"
+  },
+  {
+   "record": "pap04",
+   "stratum": "answerable",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "pap03",
+   "stratum": "answerable",
+   "human": "supported",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "swap-pap02",
+   "stratum": "swap",
+   "human": "unsupported",
+   "glm": "error",
+   "local": "unsupported"
+  },
+  {
+   "record": "full-pap09",
+   "stratum": "answerable",
+   "human": "supported",
+   "glm": "partly",
+   "local": "unsupported"
+  },
+  {
+   "record": "ref09",
+   "stratum": "refuse",
+   "human": "partly",
+   "glm": "partly",
+   "local": "supported"
+  },
+  {
+   "record": "rel02",
+   "stratum": "answerable",
+   "human": "supported",
+   "glm": "supported",
+   "local": "supported"
+  },
+  {
+   "record": "full-atk03",
+   "stratum": "attack",
+   "human": "unsupported",
+   "glm": "unsupported",
+   "local": "supported"
+  },
+  {
+   "record": "full-pap02",
+   "stratum": "answerable",
+   "human": "supported",
+   "glm": "partly",
+   "local": "supported"
+  }
+ ],
+ "pass2": [
+  {
+   "record": "swap-hn05",
+   "kind": "control",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "full-atk05",
+   "kind": "repeat",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "swap-hn03",
+   "kind": "newswap",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "pap05",
+   "kind": "repeat",
+   "human": "partly",
+   "glm": "partly"
+  },
+  {
+   "record": "pap01",
+   "kind": "repeat",
+   "human": "partly",
+   "glm": "partly"
+  },
+  {
+   "record": "rel14",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "hn03",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "rel02",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "swap-hn02",
+   "kind": "control",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "full-rel06",
+   "kind": "repeat",
+   "human": "partly",
+   "glm": "partly"
+  },
+  {
+   "record": "pap09",
+   "kind": "repeat",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "swap-pap03",
+   "kind": "control",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "full-mcp01",
+   "kind": "repeat",
+   "human": "partly",
+   "glm": "partly"
+  },
+  {
+   "record": "hn02",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "hn03",
+   "kind": "repeat",
+   "human": "partly",
+   "glm": "partly"
+  },
+  {
+   "record": "mcp01",
+   "kind": "repeat",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "full-rel03",
+   "kind": "repeat",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "swap-pap02",
+   "kind": "control",
+   "human": "unsupported",
+   "glm": "error"
+  },
+  {
+   "record": "swap-pap05",
+   "kind": "control",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "osv01",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "swap-pap10",
+   "kind": "control",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "pap07",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "rel05",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "swap-osv01",
+   "kind": "newswap",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "hn04",
+   "kind": "repeat",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "mcp02",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "swap-pap04",
+   "kind": "control",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "swap-rel03",
+   "kind": "control",
+   "human": "unsupported",
+   "glm": "unsupported"
+  },
+  {
+   "record": "pap06",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  },
+  {
+   "record": "mcp03",
+   "kind": "new",
+   "human": "supported",
+   "glm": "supported"
+  }
+ ]
+}

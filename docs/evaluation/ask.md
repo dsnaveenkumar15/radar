@@ -1,7 +1,7 @@
 # Radar Ask: evaluation
 
-Measured 2026-11-24 and 25. Every number was read from a run. All labels are drafted by a model and await human review, and the
-groundedness judge has not been compared with a human yet, so treat the numbers as provisional.
+Measured 2026-11-24 and 25. Every number was read from a run. The relevance labels are drafted by a model and await human review. The
+groundedness judge was compared with one human ("Human labels" below).
 
 Everything up to "Findings" describes the code as it was before any fix. "After the fixes" describes it now.
 
@@ -104,9 +104,7 @@ Judge `llama3.2:3b`, prompt `ask.judge@1`, unit: one answer against the items it
 | control: verbatim sentence from an item, called supported | 10 of 15 [0.42, 0.85] | 16 of 18 [0.67, 0.97] |
 
 On cases whose verdict is known by construction the judge is wrong in 6 of 30 (shipped) and 5 of 36 (what-if). It never used
-"partly". Do not read the first row as a groundedness rate. A human label set of 40 is prepared (32 real answers, 8 swapped controls)
-and nobody has labelled it yet: agreement, precision and recall of "unsupported" and Cohen's kappa come from
-`python -m evals.ask.calibration score`.
+"partly". Do not read the first row as a groundedness rate. Agreement with a human is under "Human labels"; `python -m evals.ask.calibration score` computes it.
 
 ## Cross-checks
 
@@ -191,8 +189,36 @@ six were never judged and count as irrelevant.
 | control: swapped items, called not supported | 14 of 15 | 28 of 29 |
 | control: verbatim sentence, called supported | 12 of 15 | 27 of 29 |
 
-This judge catches known-wrong cases far better than the local 3B one, which had called 12 of the same 15 "before" answers supported. It
-has not been compared with a human either: the 40 blind labels are still to come, and until then this table is provisional.
+This judge catches known-wrong cases far better than the local 3B one, which had called 12 of the same 15 "before" answers supported.
+
+## Human labels (2026-11-25)
+
+One person, the owner of the app, labelled answers without seeing any judge verdict on the page. "Partly" counts as not supported.
+Labels, strata and verdicts are in `evals/ask/recorded/human_labels.json`; the archive text is not.
+
+| Pass 1: 32 real answers of the old model | `glm-5.3-flash` | `llama3.2:3b` |
+|---|---|---|
+| agreement with the human | 27 of 32 [0.68, 0.93] | 16 of 32 [0.34, 0.66] |
+| Cohen's kappa | 0.61 [0.29, 0.89] | 0.12 [-0.13, 0.36] |
+| answers the human called not supported, also flagged | 21 of 21 [0.85, 1.00] | 7 of 21 [0.17, 0.55] |
+
+In all five disagreements GLM was the stricter one. The local judge is not usable.
+
+Pass 1 also held 8 controls: an answer shown with another question's items. The human called only 4 unsupported, 2 partly and 2
+supported. The page showed the question first, and an answer that fits its question looks right. So there was a second pass of 30
+items with the question hidden: the same 8 controls, 10 real answers drawn at random from pass 1, 10 random answers of the new model and
+2 new controls.
+
+| Pass 2 | result |
+|---|---|
+| controls called unsupported | 10 of 10 [0.72, 1.00] |
+| repeated answers labelled the same as in pass 1 | 10 of 10 [0.72, 1.00] |
+| answers of the new model called fully supported | 10 of 10 [0.72, 1.00] |
+| agreement with GLM (29 items with a verdict) | 29 of 29 [0.88, 1.00] |
+
+Read pass 2 as support, not as the headline. It was the same person on the same day, controls had been announced, the results of pass 1 had been
+discussed, and the working log of that analysis, which shows some of GLM's verdicts on pass 1 items, existed by then. The figure to quote for the judge is
+pass 1: kappa 0.61 with a wide interval. A second person has not labelled anything.
 
 Cost of the recording and all paid judging: 255 calls, $0.09. One answer costs about $0.0005.
 
