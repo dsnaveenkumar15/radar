@@ -154,3 +154,30 @@ def test_only_http_urls_become_links():
               " m.safeHref('javascript:alert(1)'), m.safeHref('data:text/html,x'), m.safeHref('not a url'), m.safeHref(null)]))")
     out = subprocess.run([NODE, "-e", script], cwd=ROOT, capture_output=True, text=True, check=True).stdout
     assert json.loads(out) == ["https://a.b/x?y=1", "http://a.b/", None, None, None, None]
+
+
+class _Reply:
+    name, model = "openrouter", "m/x"
+    last_usage = {"usd": 0.004, "tokens": 10}
+
+    def __call__(self, prompt, schema):
+        return json.dumps({"sentences": []})
+
+
+def test_ask_uses_the_hosted_model_only_under_its_own_daily_cap(tmp_path, monkeypatch):
+    from core.control import brake, store as control
+    monkeypatch.setattr(brake, "pause_reason", lambda *a: None)
+    from core.llm import Prompt, QuotaDeferred
+    from web import radar_ask
+    on = make_settings(tmp_path, ask_model="m/x", ask_daily_usd=0.005, openrouter_key="k")
+    for off in (make_settings(tmp_path), make_settings(tmp_path, ask_model="m/x"), make_settings(tmp_path, openrouter_key="k")):
+        assert radar_ask.hosted_backend(None, off) is None
+    conn = connect(on.db_path)
+    control.ensure(conn)
+    control.set(conn, "batch.daily_usd", 5, "a generous batch cap", 1.0, set())
+    backend = radar_ask.hosted_backend(conn, on, inner=_Reply())
+    prompt = Prompt("radar.ask", "v", "s", "u")
+    backend(prompt, {})
+    backend(prompt, {})                                    # 0.004 spent: still under 0.005
+    with pytest.raises(QuotaDeferred):
+        backend(prompt, {})                                # 0.008 spent: closed for the day, whatever the batch cap is

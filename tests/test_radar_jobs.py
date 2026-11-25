@@ -5,7 +5,7 @@ from core.jobs import enqueue
 from core.worker import load_registry, load_schedulers, run_once
 from radar import store
 from radar.config import Source
-from radar.jobs import (ADVISORY_JOB, API_JOB, BACKFILL_JOB, COLLECT_JOB, DIGEST_JOB, ERRATA_JOB, AUX_JOB, TRENDS_JOB, build_job_types, schedule_periodic)
+from radar.jobs import (EMBED_JOB, ADVISORY_JOB, API_JOB, BACKFILL_JOB, COLLECT_JOB, DIGEST_JOB, ERRATA_JOB, AUX_JOB, TRENDS_JOB, build_job_types, schedule_periodic)
 
 NOW = 1_790_800_000.0
 NIGHT = 1_790_877_600.0                  # 2026-10-01 23:30 IST
@@ -38,7 +38,7 @@ def test_periodic_jobs_are_idempotent_per_window_and_the_digest_is_night_only(co
 
 def test_the_worker_discovers_the_module(conn):
     registry = load_registry(["radar.jobs"], conn)
-    assert set(registry) == {COLLECT_JOB, API_JOB, BACKFILL_JOB, ADVISORY_JOB, DIGEST_JOB, ERRATA_JOB, AUX_JOB, TRENDS_JOB}
+    assert set(registry) == {EMBED_JOB, COLLECT_JOB, API_JOB, BACKFILL_JOB, ADVISORY_JOB, DIGEST_JOB, ERRATA_JOB, AUX_JOB, TRENDS_JOB}
     assert [s.__module__ for s in load_schedulers(["radar.jobs"])] == ["radar.jobs"]
     assert [name for name, _ in registry[DIGEST_JOB].stages] == ["prepare", "synth", "validate", "publish"]
 

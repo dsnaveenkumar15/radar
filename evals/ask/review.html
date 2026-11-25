@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>Review relevance labels</title>
+<style>
+:root { --bg: #fbfbf9; --ink: #1d1d1b; --soft: #62625c; --line: #d9d8d2; --card: #fff; --on: #1f5f8b; --onink: #fff; }
+@media (prefers-color-scheme: dark) { :root { --bg: #161614; --ink: #ececE6; --soft: #a3a39b; --line: #3a3a35; --card: #1f1f1c; --on: #6fb3dc; --onink: #10202b; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+main { max-width: 860px; margin: 0 auto; padding: 16px 16px 96px; }
+h1 { font-size: 1.25rem; } h2 { font-size: 1.15rem; margin: 4px 0 8px; }
+.soft { color: var(--soft); font-size: .9rem; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; overflow-wrap: anywhere; }
+.card.focus { border-color: var(--on); box-shadow: 0 0 0 1px var(--on); }
+.text { white-space: pre-wrap; max-height: 9em; overflow: auto; font-size: .92rem; }
+button, .file { font: inherit; padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); cursor: pointer; }
+button[aria-pressed=true] { background: var(--on); border-color: var(--on); color: var(--onink); }
+button:focus-visible { outline: 2px solid var(--on); outline-offset: 2px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+footer { position: fixed; inset: auto 0 0 0; background: var(--card); border-top: 1px solid var(--line); padding: 10px 16px; }
+footer .row { max-width: 860px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<main>
+<h1>Review relevance labels</h1>
+<p class="soft">Open <code>data/ask/review.json</code>. For each question, check the drafted grade of every item: 2 answers the question
+on its own, 1 helps in part, 0 does not help. Then confirm the question. Nothing leaves this page; progress is kept in this browser.
+Keys: up and down move, 0 1 2 grade, Enter confirms and goes on.</p>
+<input type="file" id="file" accept="application/json" aria-label="Open review.json">
+<div id="view"></div>
+</main>
+<footer hidden><div class="row"><button id="prev">Back</button><button id="next">Next</button><span id="count" class="soft"></span><button id="save">Export reviewed.json</button></div></footer>
+<script>
+const $ = id => document.getElementById(id);
+let doc = null, at = 0, focus = 0;
+const KEY = 'ask-review-progress';
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+function store() {
+  const saved = {};
+  for (const q of doc.questions) saved[q.id] = { confirmed: !!q.confirmed, grades: q.candidates.map(c => [c.id, c.grade]) };
+  try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* private window: progress lasts until the tab closes */ }
+}
+function el(tag, text, cls) { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; }
+function setGrade(c, g) { c.grade = g; store(); draw(); }
+function confirmNow() { doc.questions[at].confirmed = true; store(); move(1); }
+function move(step) { at = Math.max(0, Math.min(doc.questions.length - 1, at + step)); focus = 0; draw(); scrollTo(0, 0); }
+function draw() {
+  const q = doc.questions[at], view = $('view');
+  view.replaceChildren();
+  view.append(el('p', `${q.id} · ${q.kind} · ${q.split}${q.confirmed ? ' · confirmed' : ''}`, 'soft'), el('h2', q.question));
+  if (q.kind === 'refuse') view.append(el('p', 'This question should have no answer in the archive. Grade an item 2 if it does answer it.', 'soft'));
+  q.candidates.forEach((c, n) => {
+    const card = el('div', undefined, 'card' + (n === focus ? ' focus' : ''));
+    card.append(el('div', `${c.title}`), el('div', `${c.source} · item ${c.id}`, 'soft'), el('div', c.text, 'text'));
+    const row = el('div', undefined, 'row');
+    [0, 1, 2].forEach(g => { const b = el('button', String(g)); b.setAttribute('aria-pressed', c.grade === g); b.onclick = () => { focus = n; setGrade(c, g); }; row.append(b); });
+    card.append(row); view.append(card);
+  });
+  const ok = el('button', q.confirmed ? 'Confirmed' : 'Confirm this question'); ok.setAttribute('aria-pressed', !!q.confirmed); ok.onclick = confirmNow;
+  view.append(ok);
+  $('count').textContent = `${at + 1} of ${doc.questions.length}, ${doc.questions.filter(x => x.confirmed).length} confirmed`;
+}
+$('file').onchange = async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try { doc = JSON.parse(await file.text()); if (doc.type !== 'ask-relevance-review') throw new Error('not a review file'); }
+  catch (err) { doc = null; $('view').replaceChildren(el('p', 'This file could not be read: ' + err.message)); return; }
+  const saved = load();
+  for (const q of doc.questions) if (saved[q.id]) {
+    q.confirmed = saved[q.id].confirmed;
+    const grades = new Map(saved[q.id].grades);
+    for (const c of q.candidates) if (grades.has(c.id)) c.grade = grades.get(c.id);
+  }
+  document.querySelector('footer').hidden = false; at = 0; draw();
+};
+$('prev').onclick = () => move(-1); $('next').onclick = () => move(1);
+$('save').onclick = () => {
+  const out = { type: 'ask-relevance-reviewed', questions: doc.questions.map(q => ({ id: q.id, confirmed: !!q.confirmed, grades: q.candidates.map(c => ({ id: c.id, grade: c.grade })) })) };
+  const a = el('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: 'application/json' })); a.download = 'reviewed.json'; a.click();
+};
+document.addEventListener('keydown', e => {
+  if (!doc || e.target.tagName === 'INPUT' || e.ctrlKey || e.metaKey || e.altKey) return;
+  const q = doc.questions[at], c = q.candidates[focus];
+  if ('012'.includes(e.key) && e.key.length === 1 && c) { c.grade = Number(e.key); focus = Math.min(q.candidates.length - 1, focus + 1); store(); draw(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { focus = Math.max(0, Math.min(q.candidates.length - 1, focus + (e.key === 'ArrowDown' ? 1 : -1))); draw(); }
+  else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') confirmNow();
+  else return;
+  e.preventDefault();
+  const card = document.querySelector('.card.focus'); if (card) card.scrollIntoView({ block: 'nearest' });
+});
+</script>
+</body>
+</html>

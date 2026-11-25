@@ -1,0 +1,100 @@
+{"id": "rel02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "rel03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "pap01", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported"}
+{"id": "pap02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "pap03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "pap04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "pap05", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "pap09", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "pap10", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "hn02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "hn03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported"}
+{"id": "hn04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "hn05", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "mcp01", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported"}
+{"id": "mcp04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "ref09", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "atk02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "atk04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "atk06", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported"}
+{"id": "atk07", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported"}
+{"id": "swap-rel02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-rel02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "supported"}
+{"id": "swap-rel03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "unsupported"}
+{"id": "copy-rel03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap01", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap01", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "supported"}
+{"id": "swap-pap02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap05", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap05", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap09", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap09", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap10", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap10", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-hn02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-hn02", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-hn03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-hn03", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "supported"}
+{"id": "swap-hn04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-hn04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-hn05", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-hn05", "judge": "llama3.2:3b|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-mcp01", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-mcp01", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "supported"}
+{"id": "swap-mcp04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-mcp04", "judge": "llama3.2:3b|ask.judge@1", "verdict": "unsupported", "expected": "supported"}
+{"id": "rel02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported"}
+{"id": "rel03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "pap01", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "pap02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "pap03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "pap04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "pap05", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "pap09", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported"}
+{"id": "pap10", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "hn02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported"}
+{"id": "hn03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "hn04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported"}
+{"id": "hn05", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "mcp01", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported"}
+{"id": "mcp04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "ref09", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "atk02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported"}
+{"id": "atk04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported"}
+{"id": "atk06", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported"}
+{"id": "atk07", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly"}
+{"id": "swap-rel02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-rel02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly", "expected": "supported"}
+{"id": "swap-rel03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-rel03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap01", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap01", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "error", "expected": "unsupported"}
+{"id": "copy-pap02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap05", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap05", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap09", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap09", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-pap10", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-pap10", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "supported"}
+{"id": "swap-hn02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-hn02", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-hn03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-hn03", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-hn04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-hn04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-hn05", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-hn05", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "supported"}
+{"id": "swap-mcp01", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "partly", "expected": "unsupported"}
+{"id": "copy-mcp01", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}
+{"id": "swap-mcp04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "unsupported", "expected": "unsupported"}
+{"id": "copy-mcp04", "judge": "z-ai/glm-5.3-flash|ask.judge@1", "verdict": "supported", "expected": "supported"}

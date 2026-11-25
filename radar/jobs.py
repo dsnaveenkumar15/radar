@@ -17,7 +17,7 @@ from radar.apisurface import backfill_api_surface, refresh_api_surface
 from radar.collect import run_collect
 from radar.collectors import Context
 from radar.config import load_entities, load_sources
-from radar.embed import OllamaEmbedder
+from radar.embed import OllamaEmbedder, backfill
 from radar.fetch_pkg import PackageFetcher
 from radar.publishing import publish_aux, publish_errata
 
@@ -29,6 +29,7 @@ DIGEST_JOB = "radar.digest"
 ERRATA_JOB, ERRATA_EVERY_S = "radar.errata", 1800
 AUX_JOB, AUX_EVERY_S = "radar.aux", 6 * 3600
 TRENDS_JOB = "radar.trends"
+EMBED_JOB, EMBED_EVERY_S, EMBED_BATCH = "radar.embed", 1800, 500
 
 
 def enqueue_digest(conn, date: str, now=None) -> int:
@@ -44,6 +45,7 @@ def schedule_periodic(conn, now: float) -> None:
     schedule(conn, "radar", ADVISORY_JOB, ADVISORY_EVERY_S, now=now)
     schedule(conn, "radar", ERRATA_JOB, ERRATA_EVERY_S, now=now)
     schedule(conn, "radar", AUX_JOB, AUX_EVERY_S, now=now)
+    schedule(conn, "radar", EMBED_JOB, EMBED_EVERY_S, now=now)
     if in_night_window(now):
         enqueue_digest(conn, digest.digest_date(now), now=now)
         week = trends.previous_week(now)
@@ -75,5 +77,6 @@ def build_job_types(conn, github=None, backend=None, use_llm: bool = True, clien
                                                    sources=sources, data_root=data_root, model=model, clock=clock)),
         TRENDS_JOB: JobType("radar", trends.stages(conn, backend=backend, registry=registry, data_root=data_root, clock=clock)),
         AUX_JOB: JobType("radar", [("aux", lambda job, out: publish_aux(conn, data_root, clock()))]),
+        EMBED_JOB: JobType("radar", [("embed", lambda job, out: backfill(conn, embedder, EMBED_BATCH))]),
         ERRATA_JOB: JobType("radar", [("errata", lambda job, out: publish_errata(conn, data_root, registry, clock()))]),
     }

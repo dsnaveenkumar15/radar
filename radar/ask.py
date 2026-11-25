@@ -13,7 +13,7 @@ from radar.versions import sort_key
 
 MAX_QUESTION = 300
 FTS_CANDIDATES = 50
-VECTOR_WINDOW = 5000
+VECTOR_WINDOW = 100_000         # a latency ceiling, not a filter: about 0.4 s for 24,000 vectors on the server
 VECTOR_CANDIDATES = 50
 VECTOR_MIN = 0.5
 CONFIDENT_COSINE = 0.6
@@ -21,14 +21,19 @@ RRF_K = 60
 CONTEXT_ITEMS = 6
 ITEM_TEXT = 600
 MAX_SENTENCES = 12
+MAX_ADVISORIES = 10
+SEVERITIES = ("critical", "high", "medium", "unknown", "low")      # unscored may be serious: above low
 PROMPT_VERSION = "radar.ask@1"
 NOT_IN_ARCHIVE = "Not in the Radar archive."
 STOP = {"the", "and", "for", "are", "was", "what", "which", "when", "with", "that", "this", "from", "have", "has", "how",
         "does", "did", "about", "into", "any", "new", "its", "their", "there", "in", "of", "to", "is", "it", "on", "at",
         "an", "or", "by", "as", "be", "we", "do", "me", "my", "you", "can", "who", "why"}
-_BREAKING = re.compile(r"(?i)\b(broke|broken|breaks?|breaking)\b")
+_BREAKING = re.compile(r"(?i)\b(broke|broken|breaks?|breaking|remove[sd]?|removals?)\b")
 _ADVISORY = re.compile(r"(?i)\b(cves?|advisor(?:y|ies)|vulnerabilit(?:y|ies)|security)\b")
-_SINCE = re.compile(r"(?i)\bsince\s+v?(\d[\w.]*)")
+_SEVERITY = re.compile(r"(?i)\b(critical|high|medium|low)\b")
+_LANGUAGES = (("npm", re.compile(r"(?i)\b(typescript|javascript|node\.?js|npm)\b")), ("pypi", re.compile(r"(?i)\b(python|pypi)\b")))
+_MCP_SERVERS = re.compile(r"(?i)\bmcp(?=\s+servers?\b)")             # a kind of server, not the mcp package
+_SINCE = re.compile(r"(?i)\b(?:since|after)\s+v?(\d[\w.]*)")
 _WORD = re.compile(r"[@\w./-]+")
 _TERM = re.compile(r"[A-Za-z0-9_]{2,}")
 _URL = re.compile(r"(?i)https?://\S+")
@@ -54,7 +59,8 @@ def _covers(terms: list[str], row) -> bool:
 
 
 def resolve_packages(question: str, sources, registry) -> list[str]:
-    for word in _WORD.findall(question):
+    language = next((eco for eco, pattern in _LANGUAGES if pattern.search(question)), None)
+    for word in _WORD.findall(_MCP_SERVERS.sub(" ", question)):
         word = word.strip(".,;:?!")
         key = _norm(word)
         if len(key) < 2:
@@ -65,10 +71,12 @@ def resolve_packages(question: str, sources, registry) -> list[str]:
             if not s.package:
                 continue
             names = {_norm(s.package.partition(":")[2]), _norm(s.repo.partition("/")[2])}
-            if key in names or (entity and _norm(entity) in names):
+            in_language = language and s.package.startswith(language + ":")
+            if key in names or (entity and _norm(entity) in names) or (in_language and len(key) > 4 and any(key in n for n in names)):
                 found.append(s.package)
         if found:
-            return list(dict.fromkeys(found))
+            found = list(dict.fromkeys(found))
+            return [p for p in found if language and p.startswith(language + ":")] or found
     return []
 
 
@@ -80,7 +88,8 @@ def route(question: str, sources, registry) -> dict | None:
         since = _SINCE.search(question)
         return {"intent": "breaking", "packages": packages, "since": since.group(1) if since else None}
     if _ADVISORY.search(question):
-        return {"intent": "advisories", "packages": packages}
+        severity = _SEVERITY.search(question)
+        return {"intent": "advisories", "packages": packages, **({"severity": severity.group(1).lower()} if severity else {})}
     return None
 
 
@@ -92,8 +101,9 @@ def _none(note: str | None = None) -> dict:
     return _result("none", [{"text": NOT_IN_ARCHIVE, "cites": []}], note)
 
 
-def _breaking(conn, intent: dict) -> list[dict]:
-    sentences = []
+def _breaking(conn, intent: dict) -> tuple[list[dict], str]:
+    sentences, note = [], ""
+    room = MAX_SENTENCES // len(intent["packages"])
     for package in intent["packages"]:
         ecosystem, _, name = package.partition(":")
         rows = [r for r in conn.execute("SELECT from_version, to_version, diff FROM radar_api_diffs "
@@ -102,40 +112,44 @@ def _breaking(conn, intent: dict) -> list[dict]:
         floor = sort_key(ecosystem, intent["since"]) if intent.get("since") else None
         if floor is not None:
             rows = [r for r in rows if sort_key(ecosystem, r["to_version"]) > floor]
-        rows.sort(key=lambda r: sort_key(ecosystem, r["to_version"]))
+        rows.sort(key=lambda r: sort_key(ecosystem, r["to_version"]), reverse=True)
         if not rows:
             sentences.append({"text": f"No API diff is available for {package} yet.", "cites": []})
             continue
-        listed = False
+        changes = []
         for r in rows:
             cite = {"id": f"diff:{package}:{r['from_version']}->{r['to_version']}", "url": None,
                     "title": f"{package} API diff {r['from_version']} to {r['to_version']}"}
-            for change in json.loads(r["diff"])["breaking"][:8]:
-                sentences.append({"text": f"{package} {r['from_version']} to {r['to_version']}: {change['symbol']}: "
-                                          f"{change['detail']}.", "cites": [cite]})
-                listed = True
-        if not listed:
-            span = f"{rows[0]['from_version']} and {rows[-1]['to_version']}"
+            changes += [{"text": f"{package} {r['from_version']} to {r['to_version']}: {change['symbol']}: {change['detail']}.",
+                         "cites": [cite]} for change in json.loads(r["diff"])["breaking"]]
+        sentences += changes[:room]
+        if len(changes) > room:
+            note += f" Showing the newest {room} of {len(changes)} changes in {package}."
+        if not changes:
+            span = f"{rows[-1]['from_version']} and {rows[0]['to_version']}"
             sentences.append({"text": f"No breaking API changes detected in {package} between {span}.", "cites": []})
-    return sentences[:MAX_SENTENCES]
+    return sentences, note
 
 
-def _advisories(conn, intent: dict) -> list[dict]:
-    sentences = []
+def _advisories(conn, intent: dict) -> tuple[list[dict], str]:
+    sentences, note, severity = [], "", intent.get("severity")
+    order = "CASE severity " + " ".join(f"WHEN '{s}' THEN {n}" for n, s in enumerate(SEVERITIES)) + " ELSE 3 END"
     for package in intent["packages"]:
-        rows = conn.execute("SELECT id, severity, summary FROM radar_advisories WHERE package=? "
-                            "ORDER BY published DESC, id LIMIT 10", (package,)).fetchall()
+        rows = conn.execute("SELECT id, severity, summary FROM radar_advisories WHERE package=? AND (? IS NULL OR severity=?) "
+                            f"ORDER BY {order}, published DESC, id", (package, severity, severity)).fetchall()
         if not rows:
-            sentences.append({"text": f"No advisories recorded for {package}.", "cites": []})
+            sentences.append({"text": f"No {severity + ' ' if severity else ''}advisories recorded for {package}.", "cites": []})
+        if len(rows) > MAX_ADVISORIES:
+            note += f" Showing {MAX_ADVISORIES} of {len(rows)} advisories for {package}, worst first."
         sentences += [{"text": f"{r['id']} ({r['severity']}): {r['summary']}",
                        "cites": [{"id": r["id"], "title": r["id"], "url": f"https://osv.dev/vulnerability/{r['id']}"}]}
-                      for r in rows]
-    return sentences[:MAX_SENTENCES]
+                      for r in rows[:MAX_ADVISORIES]]
+    return sentences, note
 
 
 def answer_structured(conn, intent: dict) -> dict:
-    sentences = _breaking(conn, intent) if intent["intent"] == "breaking" else _advisories(conn, intent)
-    return _result("structured", sentences, "Answered from API-diff and advisory data; no model was involved.")
+    sentences, note = _breaking(conn, intent) if intent["intent"] == "breaking" else _advisories(conn, intent)
+    return _result("structured", sentences, "Answered from API-diff and advisory data; no model was involved." + note)
 
 
 def retrieve(conn, question: str, embedder) -> dict:
@@ -165,8 +179,13 @@ def retrieve(conn, question: str, embedder) -> dict:
             scored.sort(reverse=True)
             vector_ids = [i for _, i in scored[:VECTOR_CANDIDATES]]
             best = scored[0][0] if scored else 0.0
+    terms = fts_terms(question)
+    rows = {i: conn.execute("SELECT title, body FROM radar_items WHERE id=?", (i,)).fetchone() for i in fts_ids}
+    covering = [i for i in fts_ids if rows[i] is not None and _covers(terms, rows[i])]
+    # One shared word is weak evidence: next to vector hits, a keyword hit counts only if it holds most of the question's terms.
+    keyword_ids = covering if vector_ids else fts_ids
     scores: dict[int, float] = {}
-    for ranking in (fts_ids, vector_ids):
+    for ranking in (keyword_ids, vector_ids):
         for rank, item_id in enumerate(ranking):
             scores[item_id] = scores.get(item_id, 0.0) + 1.0 / (RRF_K + rank + 1)
     top = sorted(scores, key=lambda i: (-scores[i], -i))[:CONTEXT_ITEMS]
@@ -176,9 +195,7 @@ def retrieve(conn, question: str, embedder) -> dict:
                            (item_id,)).fetchone()
         if row is not None:
             items.append(dict(row))
-    terms = fts_terms(question)
-    top_rows = [conn.execute("SELECT title, body FROM radar_items WHERE id=?", (i,)).fetchone() for i in fts_ids[:5]]
-    covered = any(row is not None and _covers(terms, row) for row in top_rows)
+    covered = any(i in covering for i in fts_ids[:5])
     return {"items": items, "confident": covered or best >= CONFIDENT_COSINE}
 
 

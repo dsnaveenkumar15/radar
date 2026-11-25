@@ -47,9 +47,8 @@ def unpack(blob: bytes) -> list[float]:
 
 
 def cosine(a, b) -> float:
-    dot = sum(x * y for x, y in zip(a, b))
-    norm = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
-    return dot / norm if norm else 0.0
+    norm = math.sqrt(math.sumprod(a, a) * math.sumprod(b, b))
+    return math.sumprod(a, b) / norm if norm else 0.0
 
 
 def item_text(item: dict) -> str:
@@ -68,6 +67,14 @@ def embed_items(conn, embedder, items: list[dict]) -> bool:
     except EmbedError:
         return False
     return True
+
+
+def backfill(conn, embedder, limit: int) -> dict:
+    """Give vectors to items that have none, news before registry entries and newest first, a bounded batch at a time."""
+    missing = "FROM radar_items WHERE id NOT IN (SELECT item_id FROM radar_embeddings)"
+    rows = [dict(r) for r in conn.execute(f"SELECT id, title, body {missing} ORDER BY kind='server', id DESC LIMIT ?", (limit,))]
+    ok = embed_items(conn, embedder, rows) if rows else True
+    return {"ok": ok, "left": conn.execute(f"SELECT count(*) {missing}").fetchone()[0]}
 
 
 def load_vectors(conn, ids: list[int]) -> dict[int, list[float]]:

@@ -1,0 +1,7 @@
+# Optional cross-check tools for the Ask evaluation only (evals/ask/crosscheck_*.py). Never installed in the image or in CI.
+# Install in their own environment: python -m venv data/venv-eval
+-r requirements.txt
+ragas==0.4.4
+deepeval==4.3.5
+numpy==2.5.5
+ollama==0.6.3

@@ -5,7 +5,7 @@ import pytest
 from core.llm import BackendError, FakeBackend
 from radar import ask, store
 from radar.config import load_entities, load_sources
-from radar.embed import EmbedError, embed_items
+from radar.embed import EmbedError, backfill, embed_items, pack
 from tests.radar_fakes import FakeEmbedder
 
 SOURCES, REGISTRY = load_sources(), load_entities()
@@ -175,3 +175,88 @@ def test_a_single_shared_word_is_not_a_confident_match(db):
     assert result["kind"] == "none" and backend.calls == []
     assert ask.retrieve(db, "agent framework", None)["confident"] is True    # 2 of 2 terms
     assert ask.retrieve(db, "agent", None)["confident"] is True               # a one-word question needs that word
+
+
+def test_breaking_answers_start_with_the_newest_change_and_say_when_they_are_cut(db):
+    many = {**DIFF, "breaking": [{**DIFF["breaking"][0], "symbol": f"mcp.S{n}"} for n in range(9)]}
+    for old, new in (("1.0.0", "1.1.0"), ("1.1.0", "1.2.0")):
+        add_diff(db, old, new, many)
+    add_diff(db, "1.2.0", "1.3.0", {**DIFF, "breaking": [{**DIFF["breaking"][0], "symbol": "mcp.Newest"}]})
+    result = ask.answer_structured(db, ask.route("what broke in mcp", SOURCES, REGISTRY))
+    assert "mcp.Newest" in result["sentences"][0]["text"] and len(result["sentences"]) == ask.MAX_SENTENCES
+    assert f"newest {ask.MAX_SENTENCES} of 19" in result["note"]
+    short = ask.answer_structured(db, ask.route("what broke in mcp since 1.2", SOURCES, REGISTRY))
+    assert len(short["sentences"]) == 1 and "newest" not in short["note"]
+
+
+def test_two_packages_share_the_answer(db):
+    many = {**DIFF, "breaking": [{**DIFF["breaking"][0], "symbol": f"o.S{n}"} for n in range(30)]}
+    for eco in ("pypi", "npm"):
+        db.execute("INSERT INTO radar_api_diffs(ecosystem, package, from_version, to_version, diff, created_at) "
+                   "VALUES (?, 'openai', '1.0.0', '2.0.0', ?, 1.0)", (eco, json.dumps(many)))
+    texts = [s["text"] for s in ask.answer_structured(db, ask.route("openai breaking changes", SOURCES, REGISTRY))["sentences"]]
+    assert sum(t.startswith("pypi:") for t in texts) == sum(t.startswith("npm:") for t in texts) == ask.MAX_SENTENCES // 2
+
+
+def test_the_worst_advisories_come_first_and_the_cut_is_stated(db):
+    for n in range(14):
+        severity = "critical" if n == 0 else ("high" if n < 3 else "medium")
+        db.execute("INSERT INTO radar_advisories(id, ecosystem, package, severity, summary, published, first_seen) "
+                   "VALUES (?, 'pypi', 'pypi:langchain', ?, 'x', ?, 5.0)", (f"GHSA-{n:02}", severity, float(n)))
+    result = ask.answer_structured(db, ask.route("CVEs in langchain", SOURCES, REGISTRY))
+    ids = [s["text"].split()[0] for s in result["sentences"]]
+    assert ids[:3] == ["GHSA-00", "GHSA-02", "GHSA-01"] and len(ids) == 10 and "10 of 14" in result["note"]
+    only = ask.answer_structured(db, ask.route("critical CVEs in langchain", SOURCES, REGISTRY))
+    assert [s["text"].split()[0] for s in only["sentences"]] == ["GHSA-00"] and " of " not in only["note"]
+    none = ask.answer_structured(db, ask.route("low severity CVEs in langchain", SOURCES, REGISTRY))
+    assert none["sentences"][0]["text"] == "No low advisories recorded for pypi:langchain."
+
+
+@pytest.mark.parametrize("question, expected", [
+    ("breaking changes in mcp after 2.0", {"intent": "breaking", "packages": ["pypi:mcp"], "since": "2.0"}),
+    ("has openai removed anything", {"intent": "breaking", "packages": ["pypi:openai", "npm:openai"], "since": None}),
+    ("openai python breaking changes", {"intent": "breaking", "packages": ["pypi:openai"], "since": None}),
+    ("what broke in the Anthropic TypeScript SDK", {"intent": "breaking", "packages": ["npm:@anthropic-ai/sdk"], "since": None}),
+    ("which MCP servers look up vulnerabilities", None)])
+def test_router_reads_versions_languages_and_mcp_servers(question, expected):
+    assert ask.route(question, SOURCES, REGISTRY) == expected
+
+
+def test_every_vector_is_searched_however_old(db):
+    old = add(db, "agent loop primer", n=1)
+    embed_items(db, FakeEmbedder(), [{"id": old, "title": "agent loop primer", "body": ""}])
+    far = FakeEmbedder().embed(["search_document: quantum chemistry"])[0]
+    db.execute("PRAGMA foreign_keys=OFF")
+    db.executemany("INSERT INTO radar_embeddings(item_id, model, dim, vector) VALUES (?, 'm', ?, ?)",
+                   [(old + n, len(far), pack(far)) for n in range(1, 5100)])
+    assert old in [i["id"] for i in ask.retrieve(db, "loop primer agent zzz", FakeEmbedder())["items"]]
+
+
+def test_backfill_gives_every_item_a_vector_in_bounded_batches_news_first(db):
+    server = add(db, "a registry entry", n=1, kind="server")
+    news = [add(db, f"news {n}", n=n) for n in (2, 3)]
+
+    def have():
+        return {r[0] for r in db.execute("SELECT item_id FROM radar_embeddings")}
+    assert backfill(db, FakeEmbedder(), 2) == {"ok": True, "left": 1} and have() == set(news)
+    assert backfill(db, FakeEmbedder(), 2) == {"ok": True, "left": 0} and have() == {server, *news}
+    assert backfill(db, FakeEmbedder(), 2) == {"ok": True, "left": 0}
+
+    class Down:
+        name = "x"
+
+        def embed(self, texts):
+            raise EmbedError("down")
+    add(db, "later", n=9)
+    assert backfill(db, Down(), 2) == {"ok": False, "left": 1}
+
+
+def test_a_loose_keyword_hit_does_not_push_out_vector_hits_but_still_serves_when_there_are_none(db):
+    near = add(db, "agent loop primer", n=1)
+    loose = [add(db, f"Registry entry {n}", "agent", n=10 + n, kind="server") for n in range(8)]
+    embed_items(db, FakeEmbedder(), [{"id": near, "title": "agent loop primer", "body": ""}])
+    question = "agent loop tutorial guide"
+    assert [i["id"] for i in ask.retrieve(db, question, FakeEmbedder())["items"]] == [near]
+    assert loose[0] in [i["id"] for i in ask.retrieve(db, question, None)["items"]]
+    exact = add(db, "agent loop tutorial guide", n=30)             # no vector yet: an exact title must still be found
+    assert exact in [i["id"] for i in ask.retrieve(db, question, FakeEmbedder())["items"]]

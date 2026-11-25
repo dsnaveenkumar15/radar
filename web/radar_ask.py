@@ -1,8 +1,11 @@
 """Ask Radar endpoints. Structured questions never touch Ollama; open ones run inside the shared gate."""
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
+import httpx
 from pydantic import BaseModel, Field
 
+from core.control.spend import CappedBackend
+from core.openrouter import OpenRouterBackend
 from radar import ask as ask_engine
 from radar import store as radar_store
 from web.radar_site import radar_db, radar_only
@@ -10,6 +13,17 @@ from web.ratelimit import enforce
 from web.security import client_ip
 
 router = APIRouter(dependencies=[Depends(radar_only)])
+
+
+CLIENT = httpx.Client(timeout=30)
+
+
+def hosted_backend(conn, settings, inner=None):
+    """Ask on OpenRouter under its own daily cap, the weekly brake and the stop-all switch; None when not configured."""
+    if not (settings.ask_model and settings.openrouter_key):
+        return None
+    inner = inner or OpenRouterBackend(settings.ask_model, settings.openrouter_key, client=CLIENT)
+    return CappedBackend(conn, inner, settings.openrouter_key, settings.ask_daily_usd, cap_setting=None)
 
 
 class AskRequest(BaseModel):
@@ -33,5 +47,6 @@ def api_ask(request: Request, body: AskRequest, conn=Depends(radar_db)):
     intent = ask_engine.route(question, state.radar_sources, registry)
     if intent:
         return ask_engine.answer_structured(conn, intent)
+    backend = hosted_backend(conn, state.settings) or state.check_backend
     with state.ollama_gate.slot():
-        return ask_engine.open_answer(conn, question, state.ask_embedder, state.check_backend)
+        return ask_engine.open_answer(conn, question, state.ask_embedder, backend)
